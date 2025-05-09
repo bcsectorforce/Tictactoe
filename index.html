@@ -1,13 +1,77 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Hello, World!</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-      <h1 class="title">Hello! </h1>
-      <p id="currentTime"></p>
-      <script src="script.js"></script>
-  <p> <a href="tic.html" target="_blank"> tic tac toe</a> </a> </p>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BC Terminal</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #00ffcc;
+      font-family: 'Courier New', monospace;
+      padding: 40px;
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .title {
+      font-size: 3em;
+      animation: glitch 1s infinite;
+      text-shadow: 0 0 5px #00ffcc;
+    }
+
+    #currentTime {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      border: 1px solid #00ffcc;
+      padding: 10px;
+      background-color: rgba(0, 255, 204, 0.1);
+    }
+
+    a {
+      text-decoration: none;
+      color: #0ff;
+      background-color: #111;
+      padding: 12px 24px;
+      border: 2px solid #0ff;
+      border-radius: 8px;
+      transition: all 0.3s ease-in-out;
+    }
+
+    a:hover {
+      background-color: #0ff;
+      color: #000;
+      box-shadow: 0 0 15px #0ff;
+    }
+
+    @keyframes glitch {
+      0% { transform: skew(0deg); }
+      20% { transform: skew(5deg); }
+      40% { transform: skew(-5deg); }
+      60% { transform: skew(3deg); }
+      80% { transform: skew(-3deg); }
+      100% { transform: skew(0deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="title">Hello, Commander</h1>
+  <p id="currentTime"></p>
+  <p><a href="tic.html" target="_blank">▶ Launch Tic Tac Toe</a></p>
+
+  <script>
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('currentTime').textContent =
+        "Current System Time: " + now.toLocaleTimeString();
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+  </script>
+</body>
 </html>
