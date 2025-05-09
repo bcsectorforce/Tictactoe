@@ -329,7 +329,7 @@ function showMatchSummary() {
   const playerWins = scores.X;
   const winPercent = ((playerWins / totalRounds) * 100).toFixed(1);
   const avgReaction = playerMoves > 0 ? (totalReactionTime / playerMoves).toFixed(0) : 0;
-const reactionSeconds = (reactionTime / 1000).toFixed(3);
+
   alert(
     `🏁 Match Summary (4 Rounds)\n\n` +
     `✅ Player Win Rate: ${winPercent}%\n` +
