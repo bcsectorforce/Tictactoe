@@ -47,7 +47,7 @@
       cursor: pointer;
     }
 
-    /* ===== THEME 1: ROYAL PROFESSIONAL ===== */
+    /* THEME 1: Royal Professional */
     body.theme1 {
       background: linear-gradient(to right, #e4d5b7, #f9f4e7);
       color: #222;
@@ -69,7 +69,7 @@
       background-color: #e6d7bd;
     }
 
-    /* ===== THEME 2: SPACE / HACKING CONSOLE ===== */
+    /* THEME 2: Space Console */
     body.theme2 {
       background: #0b0f1a;
       color: #0ff;
@@ -101,7 +101,6 @@
       font-weight: bold;
       text-shadow: 0 0 10px #f0f;
     }
-
   </style>
 </head>
 <body class="theme2">
@@ -144,8 +143,8 @@
     let round = 1;
     let gameOver = false;
     let startTime = null;
-let totalReactionTime = 0;
-let playerMoves = 0;
+    let totalReactionTime = 0;
+    let playerMoves = 0;
 
     let aiMovesHistory = [];
     let playerMovesHistory = [];
@@ -171,13 +170,13 @@ let playerMoves = 0;
     function makeMove(index) {
       if (gameOver || board[index]) return;
       board[index] = currentPlayer;
-      if (aiToggle.checked && currentPlayer === "X") playerMovesHistory.push(index);
-      renderBoard();
       if (aiToggle.checked && currentPlayer === "X") {
-  const reactionTime = Date.now() - startTime;
-  totalReactionTime += reactionTime;
-  playerMoves++;
-}
+        const reactionTime = Date.now() - startTime;
+        totalReactionTime += reactionTime;
+        playerMoves++;
+        playerMovesHistory.push(index);
+      }
+      renderBoard();
 
       if (checkWinner(currentPlayer)) {
         scores[currentPlayer]++;
@@ -226,22 +225,8 @@ let playerMoves = 0;
     }
 
     function bestMoveMedium() {
-      let randomChance = Math.random();
-      if (randomChance < 0.1) {
-        let availableMoves = [];
-        for (let i = 0; i < 9; i++) {
-          if (board[i] === null) {
-            availableMoves.push(i);
-          }
-        }
-        let randomIndex = Math.floor(Math.random() * availableMoves.length);
-        let move = availableMoves[randomIndex];
-        board[move] = "O";
-        currentPlayer = "X";
-        return move;
-      } else {
-        return bestMove();
-      }
+      if (Math.random() < 0.1) return randomMove();
+      return bestMove();
     }
 
     function randomMove() {
@@ -282,22 +267,21 @@ let playerMoves = 0;
     }
 
     function endRound(msg) {
-  message.textContent = msg;
-  updateScores();
-  gameOver = true;
+      message.textContent = msg;
+      updateScores();
+      gameOver = true;
 
-  if (round < 4) {
-    round++;
-    roundDisplay.textContent = round;
-    setTimeout(resetBoard, 1000);
-  } else {
-    setTimeout(() => {
-      showMatchSummary();
-      resetGame();  // optional: reset the game after showing stats
-    }, 1200);
-  }
-}
-
+      if (round < 4) {
+        round++;
+        roundDisplay.textContent = round;
+        setTimeout(resetBoard, 1000);
+      } else {
+        setTimeout(() => {
+          showMatchSummary();
+          resetGame();
+        }, 1200);
+      }
+    }
 
     function updateScores() {
       scoreX.textContent = scores.X;
@@ -306,36 +290,49 @@ let playerMoves = 0;
     }
 
     function resetBoard() {
-      board = Array(9).fill
-(null);
-currentPlayer = "X";
-gameOver = false;
-renderBoard();
+      board = Array(9).fill(null);
+      currentPlayer = "X";
+      gameOver = false;
+      renderBoard();
       if (!aiToggle.checked || currentPlayer === "X") {
-  startTime = Date.now();
-}
+        startTime = Date.now();
+      }
+    }
 
-function updateNextAIMoveHint() {
-  const move = chooseAIMove();
-  hintDisplay.textContent = `AI is thinking about moving to: ${move + 1}`;
-}
+    function resetGame() {
+      scores = { X: 0, O: 0, draw: 0 };
+      round = 1;
+      totalReactionTime = 0;
+      playerMoves = 0;
+      aiMovesHistory = [];
+      playerMovesHistory = [];
+      roundDisplay.textContent = round;
+      updateScores();
+      message.textContent = "";
+      resetBoard();
+    }
 
-function toggleTheme() {
-  document.body.classList.toggle("theme1");
-  document.body.classList.toggle("theme2");
-}
-function showMatchSummary() {
-  const totalRounds = 4;
-  const playerWins = scores.X;
-  const winPercent = ((playerWins / totalRounds) * 100).toFixed(1);
-  const avgReaction = playerMoves > 0 ? (totalReactionTime / playerMoves).toFixed(0) : 0;
+    function updateNextAIMoveHint() {
+      const move = chooseAIMove();
+      hintDisplay.textContent = `AI is thinking about moving to: ${move + 1}`;
+    }
 
-  alert(
-    `🏁 Match Summary (4 Rounds)\n\n` +
-    `✅ Player Win Rate: ${winPercent}%\n` +
-    `⏱️ Average Reaction Time: ${avgReaction} ms`
-  );
-}
+    function toggleTheme() {
+      if (document.body.classList.contains("theme1")) {
+        document.body.classList.remove("theme1");
+        document.body.classList.add("theme2");
+      } else {
+        document.body.classList.remove("theme2");
+        document.body.classList.add("theme1");
+      }
+    }
 
-renderBoard();
-</script> </body> </html>
+    function showMatchSummary() {
+      const avgTime = playerMoves > 0 ? (totalReactionTime / playerMoves).toFixed(2) : "0";
+      alert(`Match Over!\n\nX Wins: ${scores.X}\nO Wins: ${scores.O}\nDraws: ${scores.draw}\n\nAvg Reaction Time: ${avgTime} ms`);
+    }
+
+    renderBoard();
+  </script>
+</body>
+</html>
