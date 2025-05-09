@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      transition: all 0.4s ease;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 5px;
+      margin: 20px auto;
+      width: max-content;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      font-size: 2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .cell.disabled {
+      pointer-events: none;
+    }
+
+    .controls, .scoreboard {
+      margin: 10px;
+    }
+
+    button {
+      margin: 10px;
+      padding: 8px 16px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    /* ===== THEME 1: ROYAL PROFESSIONAL ===== */
+    body.theme1 {
+      background: linear-gradient(to right, #e4d5b7, #f9f4e7);
+      color: #222;
+      font-family: 'Garamond', serif;
+    }
+
+    .theme1 .board {
+      border: 5px solid #6e4c1e;
+      background: #f3e6cd;
+    }
+
+    .theme1 .cell {
+      background: #fdf6e3;
+      border: 2px solid #6e4c1e;
+      color: #6e4c1e;
+    }
+
+    .theme1 .cell:hover {
+      background-color: #e6d7bd;
+    }
+
+    /* ===== THEME 2: SPACE / HACKING CONSOLE ===== */
+    body.theme2 {
+      background: #0b0f1a;
+      color: #0ff;
+      font-family: 'Courier New', monospace;
+    }
+
+    .theme2 .board {
+      border: 4px solid #0ff;
+      box-shadow: 0 0 10px #0ff;
+      background: #05060a;
+    }
+
+    .theme2 .cell {
+      background: #111;
+      border: 1px solid #0ff;
+      color: #0ff;
+    }
+
+    .theme2 .cell:hover {
+      background-color: #222;
+    }
+
+    .theme2 .scoreboard, .theme2 .controls, .theme2 #hint {
+      color: #0ff;
+      text-shadow: 0 0 5px #0ff;
+    }
+
+    .theme2 #message {
+      font-weight: bold;
+      text-shadow: 0 0 10px #f0f;
+    }
+
+  </style>
+</head>
+<body class="theme2">
+  <h1>Tic Tac Toe</h1>
+
+  <div class="controls">
+    <label><input type="checkbox" id="aiToggle"> Play against AI</label>
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="impossible">Impossible</option>
+    </select>
+    <button onclick="toggleTheme()">Switch Theme</button>
+  </div>
+
+  <div class="scoreboard">
+    <p>Round: <span id="round">1</span> / 4</p>
+    <p id="hint"></p>
+    <p>Player X: <span id="scoreX">0</span> | Player O: <span id="scoreO">0</span> | Draws: <span id="draws">0</span></p>
+  </div>
+
+  <div class="board" id="board"></div>
+  <p id="message"></p>
+  <button onclick="resetGame()">Restart Game</button>
+
+  <script>
+    const boardElement = document.getElementById("board");
+    const roundDisplay = document.getElementById("round");
+    const message = document.getElementById("message");
+    const scoreX = document.getElementById("scoreX");
+    const scoreO = document.getElementById("scoreO");
+    const drawsDisplay = document.getElementById("draws");
+    const hintDisplay = document.getElementById("hint");
+    const difficultySelect = document.getElementById("difficulty");
+    const aiToggle = document.getElementById("aiToggle");
+
+    let board = Array(9).fill(null);
+    let currentPlayer = "X";
+    let scores = { X: 0, O: 0, draw: 0 };
+    let round = 1;
+    let gameOver = false;
+    let aiMovesHistory = [];
+    let playerMovesHistory = [];
+    let nextAIMove = null;
+
+    const winCombos = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    function renderBoard() {
+      boardElement.innerHTML = '';
+      board.forEach((cell, idx) => {
+        const div = document.createElement("div");
+        div.className = "cell" + (cell ? " disabled" : "");
+        div.textContent = cell || '';
+        div.onclick = () => makeMove(idx);
+        boardElement.appendChild(div);
+      });
+    }
+
+    function makeMove(index) {
+      if (gameOver || board[index]) return;
+      board[index] = currentPlayer;
+      if (aiToggle.checked && currentPlayer === "X") playerMovesHistory.push(index);
+      renderBoard();
+      if (checkWinner(currentPlayer)) {
+        scores[currentPlayer]++;
+        endRound(`${currentPlayer} wins!`);
+      } else if (!board.includes(null)) {
+        scores.draw++;
+        endRound("It's a draw!");
+      } else {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        if (aiToggle.checked && currentPlayer === "O") {
+          updateNextAIMoveHint();
+          setTimeout(aiMove, 500);
+        }
+      }
+    }
+
+    function aiMove() {
+      const move = chooseAIMove();
+      aiMovesHistory.push(move);
+      nextAIMove = null;
+      makeMove(move);
+    }
+
+    function chooseAIMove() {
+      const difficulty = difficultySelect.value;
+      if (difficulty === "impossible") return bestMove();
+      if (difficulty === "medium") return bestMoveMedium();
+      return randomMove();
+    }
+
+    function bestMove() {
+      let bestScore = -Infinity;
+      let move;
+      for (let i = 0; i < 9; i++) {
+        if (!board[i]) {
+          board[i] = "O";
+          let score = minimax(board, 0, false);
+          board[i] = null;
+          if (score > bestScore) {
+            bestScore = score;
+            move = i;
+          }
+        }
+      }
+      return move;
+    }
+
+    function bestMoveMedium() {
+      let randomChance = Math.random();
+      if (randomChance < 0.1) {
+        let availableMoves = [];
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            availableMoves.push(i);
+          }
+        }
+        let randomIndex = Math.floor(Math.random() * availableMoves.length);
+        let move = availableMoves[randomIndex];
+        board[move] = "O";
+        currentPlayer = "X";
+        return move;
+      } else {
+        return bestMove();
+      }
+    }
+
+    function randomMove() {
+      const empty = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+      return empty[Math.floor(Math.random() * empty.length)];
+    }
+
+    function minimax(board, depth, isMax) {
+      if (checkWinner("O")) return 10 - depth;
+      if (checkWinner("X")) return depth - 10;
+      if (!board.includes(null)) return 0;
+
+      if (isMax) {
+        let best = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (!board[i]) {
+            board[i] = "O";
+            best = Math.max(best, minimax(board, depth + 1, false));
+            board[i] = null;
+          }
+        }
+        return best;
+      } else {
+        let best = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (!board[i]) {
+            board[i] = "X";
+            best = Math.min(best, minimax(board, depth + 1, true));
+            board[i] = null;
+          }
+        }
+        return best;
+      }
+    }
+
+    function checkWinner(player) {
+      return winCombos.some(combo => combo.every(i => board[i] === player));
+    }
+
+    function endRound(msg) {
+      message.textContent = msg;
+      updateScores();
+      gameOver = true;
+      if (round < 4 || (round >= 4 && scores.X === scores.O)) {
+        round++;
+        roundDisplay.textContent = round;
+        setTimeout(resetBoard, 1000);
+      }
+    }
+
+    function updateScores() {
+      scoreX.textContent = scores.X;
+      scoreO.textContent = scores.O;
+      drawsDisplay.textContent = scores.draw;
+    }
+
+    function resetBoard() {
+      board = Array(9).fill
+(null);
+currentPlayer = "X";
+gameOver = false;
+renderBoard();
+}
+
+function updateNextAIMoveHint() {
+  const move = chooseAIMove();
+  hintDisplay.textContent = `AI is thinking about moving to: ${move + 1}`;
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("theme1");
+  document.body.classList.toggle("theme2");
+}
+
+renderBoard();
+</script> </body> </html>
