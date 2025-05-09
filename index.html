@@ -109,8 +109,8 @@
   <div class="controls">
     <label><input type="checkbox" id="aiToggle"> Play against AI</label>
     <select id="difficulty">
-      <option value="easy">Easy</option>
-      <option value="medium">Medium</option>
+      <option value="medium">Easy</option>
+      <option value="difficult">Medium</option>
       <option value="impossible">Impossible</option>
     </select>
     <button onclick="toggleTheme()">Switch Theme</button>
@@ -203,7 +203,7 @@
     function chooseAIMove() {
       const difficulty = difficultySelect.value;
       if (difficulty === "impossible") return bestMove();
-      if (difficulty === "medium") return bestMoveMedium();
+      if (difficulty === "difficult") return bestMoveMedium();
       return randomMove();
     }
 
