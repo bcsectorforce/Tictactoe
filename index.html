@@ -143,6 +143,10 @@
     let scores = { X: 0, O: 0, draw: 0 };
     let round = 1;
     let gameOver = false;
+    let startTime = null;
+let totalReactionTime = 0;
+let playerMoves = 0;
+
     let aiMovesHistory = [];
     let playerMovesHistory = [];
     let nextAIMove = null;
@@ -169,6 +173,12 @@
       board[index] = currentPlayer;
       if (aiToggle.checked && currentPlayer === "X") playerMovesHistory.push(index);
       renderBoard();
+      if (aiToggle.checked && currentPlayer === "X") {
+  const reactionTime = Date.now() - startTime;
+  totalReactionTime += reactionTime;
+  playerMoves++;
+}
+
       if (checkWinner(currentPlayer)) {
         scores[currentPlayer]++;
         endRound(`${currentPlayer} wins!`);
@@ -272,15 +282,22 @@
     }
 
     function endRound(msg) {
-      message.textContent = msg;
-      updateScores();
-      gameOver = true;
-      if (round < 4 || (round >= 4 && scores.X === scores.O)) {
-        round++;
-        roundDisplay.textContent = round;
-        setTimeout(resetBoard, 1000);
-      }
-    }
+  message.textContent = msg;
+  updateScores();
+  gameOver = true;
+
+  if (round < 4) {
+    round++;
+    roundDisplay.textContent = round;
+    setTimeout(resetBoard, 1000);
+  } else {
+    setTimeout(() => {
+      showMatchSummary();
+      resetGame();  // optional: reset the game after showing stats
+    }, 1200);
+  }
+}
+
 
     function updateScores() {
       scoreX.textContent = scores.X;
@@ -294,6 +311,8 @@
 currentPlayer = "X";
 gameOver = false;
 renderBoard();
+      if (!aiToggle.checked || currentPlayer === "X") {
+  startTime = Date.now();
 }
 
 function updateNextAIMoveHint() {
@@ -304,6 +323,18 @@ function updateNextAIMoveHint() {
 function toggleTheme() {
   document.body.classList.toggle("theme1");
   document.body.classList.toggle("theme2");
+}
+function showMatchSummary() {
+  const totalRounds = 4;
+  const playerWins = scores.X;
+  const winPercent = ((playerWins / totalRounds) * 100).toFixed(1);
+  const avgReaction = playerMoves > 0 ? (totalReactionTime / playerMoves).toFixed(0) : 0;
+const reactionSeconds = (reactionTime / 1000).toFixed(3);
+  alert(
+    `🏁 Match Summary (4 Rounds)\n\n` +
+    `✅ Player Win Rate: ${winPercent}%\n` +
+    `⏱️ Average Reaction Time: ${avgReaction} ms`
+  );
 }
 
 renderBoard();
