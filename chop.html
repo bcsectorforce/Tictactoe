@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chopsticks Game vs AI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align: center;
+      background: linear-gradient(to right, #f2f2f2, #e0eafc);
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #333;
+      color: white;
+      padding: 20px;
+      font-size: 28px;
+    }
+    .container {
+      padding: 20px;
+    }
+    .player {
+      margin: 30px auto;
+    }
+    .hands {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 10px;
+    }
+    .hand {
+      padding: 15px 30px;
+      border: 3px solid #555;
+      border-radius: 10px;
+      font-size: 28px;
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hand:hover {
+      background: #d6e4ff;
+    }
+    .hand.disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #status {
+      font-size: 22px;
+      margin: 20px;
+    }
+    select {
+      margin-top: 10px;
+      padding: 8px;
+      font-size: 16px;
+    }
+    .scoreboard, .leaderboard {
+      margin: 20px auto;
+      max-width: 400px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .scoreboard h3, .leaderboard h3 {
+      margin-top: 0;
+    }
+    .theme-selector {
+      margin-top: 10px;
+    }
+    .btn {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #333;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <header>🤖 Chopsticks Game vs AI</header>
+  <div class="container">
+    <div>
+      <label for="difficulty">Difficulty: </label>
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="impossible">Impossible</option>
+      </select>
+      <div class="theme-selector">
+        <label for="theme">Theme: </label>
+        <select id="theme">
+          <option value="default">Default</option>
+          <option value="dark">Dark</option>
+          <option value="neon">Neon</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="status">Your Turn</div>
+
+    <div class="player" id="player1">
+      <h2>You</h2>
+      <div class="hands">
+        <div class="hand" id="p1l">1</div>
+        <div class="hand" id="p1r">1</div>
+      </div>
+      <button class="btn" onclick="splitHands()">Split Hands</button>
+    </div>
+
+    <div class="player" id="player2">
+      <h2>AI</h2>
+      <div class="hands">
+        <div class="hand" id="p2l">1</div>
+        <div class="hand" id="p2r">1</div>
+      </div>
+    </div>
+
+    <div class="scoreboard">
+      <h3>Scoreboard</h3>
+      <p>Player Wins: <span id="playerWins">0</span></p>
+      <p>AI Wins: <span id="aiWins">0</span></p>
+    </div>
+
+    <div class="leaderboard">
+      <h3>Leaderboard (Avg. Win Rates)</h3>
+      <p>You: <span id="winRate">0%</span></p>
+      <p>AI: <span id="lossRate">0%</span></p>
+    </div>
+
+    <button class="btn" onclick="manualReset()">Restart Game</button>
+  </div>
+
+  <script>
+    const hands = {
+      p1l: 1,
+      p1r: 1,
+      p2l: 1,
+      p2r: 1,
+    };
+
+    let currentPlayer = 1;
+    let selectedHand = null;
+    let playerWins = parseInt(localStorage.getItem('playerWins')) || 0;
+    let aiWins = parseInt(localStorage.getItem('aiWins')) || 0;
+    let totalGames = parseInt(localStorage.getItem('totalGames')) || 0;
+
+    const status = document.getElementById('status');
+    const difficultySelect = document.getElementById('difficulty');
+    const playerWinDisplay = document.getElementById('playerWins');
+    const aiWinDisplay = document.getElementById('aiWins');
+    const winRateDisplay = document.getElementById('winRate');
+    const lossRateDisplay = document.getElementById('lossRate');
+    const themeSelect = document.getElementById('theme');
+
+    themeSelect.addEventListener('change', () => {
+      const theme = themeSelect.value;
+      if (theme === 'dark') {
+        document.body.style.background = '#121212';
+        document.body.style.color = '#eee';
+      } else if (theme === 'neon') {
+        document.body.style.background = '#000';
+        document.body.style.color = '#39ff14';
+      } else {
+        document.body.style.background = 'linear-gradient(to right, #f2f2f2, #e0eafc)';
+        document.body.style.color = 'black';
+      }
+    });
+
+    function updateUI() {
+      for (const hand in hands) {
+        const el = document.getElementById(hand);
+        el.textContent = hands[hand];
+        el.classList.toggle('disabled', hands[hand] === 0);
+      }
+      playerWinDisplay.textContent = playerWins;
+      aiWinDisplay.textContent = aiWins;
+      winRateDisplay.textContent = totalGames ? ((playerWins / totalGames) * 100).toFixed(1) + '%' : '0%';
+      lossRateDisplay.textContent = totalGames ? ((aiWins / totalGames) * 100).toFixed(1) + '%' : '0%';
+    }
+
+    function resetGame(winner) {
+      totalGames++;
+      if (winner === 'player') {
+        playerWins++;
+        alert('You Win!');
+      } else {
+        aiWins++;
+        alert('AI Wins!');
+      }
+      localStorage.setItem('playerWins', playerWins);
+      localStorage.setItem('aiWins', aiWins);
+      localStorage.setItem('totalGames', totalGames);
+      manualReset();
+    }
+
+    function manualReset() {
+      hands.p1l = hands.p1r = hands.p2l = hands.p2r = 1;
+      currentPlayer = 1;
+      selectedHand = null;
+      updateUI();
+      status.textContent = "Your Turn";
+    }
+
+    function switchTurn() {
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      selectedHand = null;
+      status.textContent = currentPlayer === 1 ? "Your Turn" : "AI's Turn";
+      if (currentPlayer === 2) setTimeout(aiMove, 800);
+    }
+
+    function checkWin() {
+      if (hands.p1l === 0 && hands.p1r === 0) {
+        resetGame('ai');
+      } else if (hands.p2l === 0 && hands.p2r === 0) {
+        resetGame('player');
+      }
+    }
+
+    function applyHit(from, to) {
+      let result = hands[to] + hands[from];
+      hands[to] = result === 5 ? 0 : result % 5;
+      updateUI();
+      checkWin();
+      switchTurn();
+    }
+
+    function validHands(playerPrefix) {
+      return Object.keys(hands).filter(h => h.startsWith(playerPrefix) && hands[h] > 0);
+    }
+
+    function aiMove() {
+      const diff = difficultySelect.value;
+      const myHands = validHands('p2');
+      const oppHands = validHands('p1');
+      let move = null;
+
+      if (diff === 'easy') {
+        move = {
+          from: myHands[Math.floor(Math.random() * myHands.length)],
+          to: oppHands[Math.floor(Math.random() * oppHands.length)],
+        };
+      } else if (diff === 'medium') {
+        if (Math.random() < 0.3) {
+          move = bestAIMove();
+        } else {
+          move = {
+            from: myHands[Math.floor(Math.random() * myHands.length)],
+            to: oppHands[Math.floor(Math.random() * oppHands.length)],
+          };
+        }
+      } else {
+        move = bestAIMove();
+      }
+
+      if (move) applyHit(move.from, move.to);
+    }
+
+    function bestAIMove() {
+      const myHands = validHands('p2');
+      const oppHands = validHands('p1');
+
+      for (let from of myHands) {
+        for (let to of oppHands) {
+          const total = hands[from] + hands[to];
+          if (total === 5) return { from, to };
+        }
+      }
+
+      return { from: myHands[0], to: oppHands[0] };
+    }
+
+    function splitHands() {
+      if (currentPlayer !== 1) return;
+      const total = hands.p1l + hands.p1r;
+      if (total > 1 && total < 10 && (hands.p1l === 0 || hands.p1r === 0 || hands.p1l !== hands.p1r)) {
+        hands.p1l = Math.floor(total / 2);
+        hands.p1r = total - hands.p1l;
+        updateUI();
+        switchTurn();
+      } else {
+        alert("Cannot split hands now. Must have at least 2 total and a difference or zero hand.");
+      }
+    }
+
+    document.querySelectorAll('.hand').forEach(hand => {
+      hand.addEventListener('click', () => {
+        const id = hand.id;
+        if (currentPlayer !== 1 || hands[id] === 0) return;
+
+        const isOwn = id.startsWith('p1');
+
+        if (isOwn && !selectedHand) {
+          selectedHand = id;
+          status.textContent = `Selected ${id.toUpperCase()}. Now tap AI's hand.`;
+        } else if (!isOwn && selectedHand) {
+          applyHit(selectedHand, id);
+        }
+      });
+    });
+
+    updateUI();
+  </script>
+</body>
+</html>
