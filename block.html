@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dodge the Obstacles Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #282c34;
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        canvas {
+            border: 2px solid white;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            font-size: 24px;
+        }
+        #highScore {
+            position: absolute;
+            top: 40px;
+            font-size: 24px;
+        }
+        #startScreen {
+            position: absolute;
+            text-align: center;
+            color: white;
+        }
+        #startScreen button, #colorPicker {
+            background-color: #444;
+            color: white;
+            font-size: 20px;
+            margin: 10px;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        #startScreen button:hover, #colorPicker:hover {
+            background-color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <h1>Select Character Color</h1>
+        <input type="color" id="colorPicker" value="#00ff00">
+        <button onclick="startGame()">Start Game</button>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="score">Score: 0</div>
+    <div id="highScore">High Score: 0</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        canvas.width = 800;
+        canvas.height = 600;
+
+        const playerWidth = 50;
+        const playerHeight = 50;
+        let playerX = canvas.width / 2 - playerWidth / 2;
+        const playerY = canvas.height - playerHeight - 10;
+        let playerColor = '#00ff00'; // Default color
+        let playerSpeed = 8; // Speed of character movement
+        let velocityX = 0; // Horizontal velocity for smooth movement
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0; // Load high score from localStorage
+        let obstacles = [];
+        let gameInterval, obstacleInterval, timeInterval;
+        let maxObstacles = 1; // Initial number of obstacles
+        let gameTime = 0; // Game time in seconds
+        let obstacleSpeed = 4; // Initial speed of obstacles
+        let speedIncrease1 = 70; // Time to increase speed (in seconds)
+        let speedIncrease2 = 100; // Time to increase speed again (in seconds)
+
+        // Draw the player
+        function drawPlayer() {
+            ctx.fillStyle = playerColor;
+            ctx.fillRect(playerX, playerY, playerWidth, playerHeight);
+        }
+
+        // Draw obstacles
+        function drawObstacles() {
+            ctx.fillStyle = "red";
+            obstacles.forEach(obstacle => {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+        }
+
+        // Create new obstacles
+        function createObstacle() {
+            const obstacleWidth = Math.random() * 50 + 30;
+            const obstacleHeight = Math.random() * 30 + 20;
+            const obstacleX = Math.random() * (canvas.width - obstacleWidth);
+            obstacles.push({
+                x: obstacleX,
+                y: -obstacleHeight,
+                width: obstacleWidth,
+                height: obstacleHeight,
+                speed: obstacleSpeed,
+            });
+        }
+
+        // Update obstacle positions
+        function moveObstacles() {
+            obstacles.forEach(obstacle => {
+                obstacle.y += obstacle.speed;
+            });
+            obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height);
+        }
+
+        // Check for collision with obstacles
+        function checkCollision() {
+            for (let obstacle of obstacles) {
+                if (
+                    playerX < obstacle.x + obstacle.width &&
+                    playerX + playerWidth > obstacle.x &&
+                    playerY < obstacle.y + obstacle.height &&
+                    playerY + playerHeight > obstacle.y
+                ) {
+                    clearInterval(gameInterval);
+                    clearInterval(obstacleInterval);
+                    clearInterval(timeInterval);
+                    if (score > highScore) {
+                        highScore = score; // Update high score if current score is higher
+                        localStorage.setItem('highScore', highScore); // Save new high score
+                    }
+                    alert(`Game Over! Your final score is ${score}`);
+                    window.location.reload();
+                }
+            }
+        }
+
+        // Check for wall collision
+        function checkWallCollision() {
+            if (playerX <= 0 || playerX + playerWidth >= canvas.width) {
+                clearInterval(gameInterval);
+                clearInterval(obstacleInterval);
+                clearInterval(timeInterval);
+                if (score > highScore) {
+                    highScore = score; // Update high score if current score is higher
+                    localStorage.setItem('highScore', highScore); // Save new high score
+                }
+                alert(`Game Over! You hit the wall! Final score: ${score}`);
+                window.location.reload();
+            }
+        }
+
+        // Update score and increase obstacles
+        function updateScore() {
+            score++;
+            document.getElementById("score").textContent = `Score: ${score}`;
+        }
+
+        // Display high score
+        function updateHighScore() {
+            document.getElementById("highScore").textContent = `High Score: ${highScore}`;
+        }
+
+        // Handle player movement
+        function movePlayer() {
+            document.addEventListener("keydown", function(event) {
+                if (event.key === "ArrowLeft") {
+                    velocityX = -playerSpeed; // Move left
+                } else if (event.key === "ArrowRight") {
+                    velocityX = playerSpeed; // Move right
+                }
+            });
+
+            document.addEventListener("keyup", function(event) {
+                if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                    velocityX = 0; // Stop movement when key is released
+                }
+            });
+        }
+
+        // Update player's horizontal position for smooth movement
+        function updatePlayerPosition() {
+            playerX += velocityX;
+            if (playerX < 0) playerX = 0; // Prevent going out of bounds
+            if (playerX + playerWidth > canvas.width) playerX = canvas.width - playerWidth; // Prevent going out of bounds
+        }
+
+        // Game loop
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            moveObstacles();
+            updatePlayerPosition();
+            drawPlayer();
+            drawObstacles();
+            checkCollision();
+            checkWallCollision();
+            updateScore();
+        }
+
+        // Increase the number of blocks every 60 seconds
+        function increaseDifficulty() {
+            gameTime++;
+            if (gameTime % 60 === 0) { // Every 60 seconds
+                for (let i = 0; i < 10; i++) {
+                    createObstacle(); // Add 10 obstacles every minute
+                }
+            }
+
+            // Speed up blocks after 1 minute and 10 seconds
+            if (gameTime >= speedIncrease1) {
+                obstacleSpeed = 5; // Increase speed slightly
+            }
+
+            // Speed up blocks more after 1 minute and 40 seconds
+            if (gameTime >= speedIncrease2) {
+                obstacleSpeed = 6; // Increase speed more
+            }
+        }
+
+        // Start the game
+        function startGame() {
+            playerColor = document.getElementById("colorPicker").value; // Get selected color
+
+            document.getElementById("startScreen").style.display = "none"; // Hide the start screen
+            updateHighScore(); // Update the displayed high score
+
+            movePlayer(); // Set up player controls
+            obstacleInterval = setInterval(createObstacle, 1000); // Create obstacles every 1 second initially
+            gameInterval = setInterval(gameLoop, 16); // 60 FPS
+            timeInterval = setInterval(increaseDifficulty, 1000); // Track game time
+        }
+    </script>
+</body>
+</html>
