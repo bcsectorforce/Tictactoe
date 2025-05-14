@@ -15,19 +15,24 @@
             font-family: Arial, sans-serif;
             color: white;
             overflow: hidden;
+            flex-direction: column;
         }
         canvas {
             border: 2px solid white;
+            width: 100%;
+            height: auto;
+            max-width: 1000px;
+            max-height: 650px;
+        }
+        #score, #highScore {
+            position: absolute;
+            font-size: 24px;
         }
         #score {
-            position: absolute;
             top: 10px;
-            font-size: 24px;
         }
         #highScore {
-            position: absolute;
             top: 40px;
-            font-size: 24px;
         }
         #startScreen {
             position: absolute;
@@ -62,34 +67,40 @@
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        
-        canvas.width = 1000;
-        canvas.height = 650;
+
+        // Dynamic resize logic (phone-friendly)
+        function resizeCanvas() {
+            const aspectRatio = 1000 / 650;
+            const width = Math.min(window.innerWidth, 1000);
+            const height = width / aspectRatio;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
 
         const playerWidth = 10;
         const playerHeight = 20;
         let playerX = canvas.width / 2 - playerWidth / 2;
         const playerY = canvas.height - playerHeight - 10;
-        let playerColor = '#00ff00'; // Default color
-        let playerSpeed = 4; // Speed of character movement
-        let velocityX = 0; // Horizontal velocity for smooth movement
+        let playerColor = '#00ff00';
+        let playerSpeed = 4;
+        let velocityX = 0;
         let score = 0;
-        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0; // Load high score from localStorage
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
         let obstacles = [];
         let gameInterval, obstacleInterval, timeInterval;
-        let maxObstacles = 1; // Initial number of obstacles
-        let gameTime = 0; // Game time in seconds
-        let obstacleSpeed = 5; // Initial speed of obstacles
-        let speedIncrease1 = 70; // Time to increase speed (in seconds)
-        let speedIncrease2 = 100; // Time to increase speed again (in seconds)
+        let maxObstacles = 1;
+        let gameTime = 0;
+        let obstacleSpeed = 5;
+        let speedIncrease1 = 70;
+        let speedIncrease2 = 100;
 
-        // Draw the player
         function drawPlayer() {
             ctx.fillStyle = playerColor;
             ctx.fillRect(playerX, playerY, playerWidth, playerHeight);
         }
 
-        // Draw obstacles
         function drawObstacles() {
             ctx.fillStyle = "red";
             obstacles.forEach(obstacle => {
@@ -97,7 +108,6 @@
             });
         }
 
-        // Create new obstacles
         function createObstacle() {
             const obstacleWidth = Math.random() * 50 + 30;
             const obstacleHeight = Math.random() * 30 + 20;
@@ -111,7 +121,6 @@
             });
         }
 
-        // Update obstacle positions
         function moveObstacles() {
             obstacles.forEach(obstacle => {
                 obstacle.y += obstacle.speed;
@@ -119,7 +128,6 @@
             obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height);
         }
 
-        // Check for collision with obstacles
         function checkCollision() {
             for (let obstacle of obstacles) {
                 if (
@@ -132,8 +140,8 @@
                     clearInterval(obstacleInterval);
                     clearInterval(timeInterval);
                     if (score > highScore) {
-                        highScore = score; // Update high score if current score is higher
-                        localStorage.setItem('highScore', highScore); // Save new high score
+                        highScore = score;
+                        localStorage.setItem('highScore', highScore);
                     }
                     alert(`Game Over! Your final score is ${score}`);
                     window.location.reload();
@@ -141,80 +149,71 @@
             }
         }
 
-        // Check for wall collision
         function checkWallCollision() {
             if (playerX <= 0 || playerX + playerWidth >= canvas.width) {
                 clearInterval(gameInterval);
                 clearInterval(obstacleInterval);
                 clearInterval(timeInterval);
                 if (score > highScore) {
-                    highScore = score; // Update high score if current score is higher
-                    localStorage.setItem('highScore', highScore); // Save new high score
+                    highScore = score;
+                    localStorage.setItem('highScore', highScore);
                 }
                 alert(`Game Over! You hit the wall! Final score: ${score}`);
                 window.location.reload();
             }
         }
 
-        // Update score and increase obstacles
         function updateScore() {
             score++;
             document.getElementById("score").textContent = `Score: ${score}`;
         }
 
-        // Display high score
         function updateHighScore() {
             document.getElementById("highScore").textContent = `High Score: ${highScore}`;
         }
 
-        // Handle player movement
         function movePlayer() {
             document.addEventListener("keydown", function(event) {
                 if (event.key === "ArrowLeft") {
-                    velocityX = -playerSpeed; // Move left
+                    velocityX = -playerSpeed;
                 } else if (event.key === "ArrowRight") {
-                    velocityX = playerSpeed; // Move right
+                    velocityX = playerSpeed;
                 }
             });
 
             document.addEventListener("keyup", function(event) {
                 if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                    velocityX = 0; // Stop movement when key is released
+                    velocityX = 0;
                 }
             });
         }
 
-       
-        // Touch controls for mobile devices
-function setupTouchControls() {
-    canvas.addEventListener("touchstart", function(event) {
-        const touchX = event.touches[0].clientX;
-        const canvasRect = canvas.getBoundingClientRect();
-        const relativeX = touchX - canvasRect.left;
+        function setupTouchControls() {
+            canvas.addEventListener("touchstart", function(event) {
+                const touchX = event.touches[0].clientX;
+                const canvasRect = canvas.getBoundingClientRect();
+                const relativeX = touchX - canvasRect.left;
 
-        if (relativeX < canvas.width / 2) {
-            velocityX = -playerSpeed; // Move left
-        } else {
-            velocityX = playerSpeed; // Move right
+                if (relativeX < canvas.width / 2) {
+                    velocityX = -playerSpeed;
+                } else {
+                    velocityX = playerSpeed;
+                }
+            });
+
+            canvas.addEventListener("touchend", function() {
+                velocityX = 0;
+            });
         }
-    });
 
-    canvas.addEventListener("touchend", function() {
-        velocityX = 0; // Stop moving when the user lifts their finger
-    });
-}
-
-        
-        // Update player's horizontal position for smooth movement
         function updatePlayerPosition() {
             playerX += velocityX;
-            if (playerX < 0) playerX = 0; // Prevent going out of bounds
-            if (playerX + playerWidth > canvas.width) playerX = canvas.width - playerWidth; // Prevent going out of bounds
+            if (playerX < 0) playerX = 0;
+            if (playerX + playerWidth > canvas.width) playerX = canvas.width - playerWidth;
         }
 
-        // Game loop
         function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             moveObstacles();
             updatePlayerPosition();
             drawPlayer();
@@ -224,41 +223,30 @@ function setupTouchControls() {
             updateScore();
         }
 
-        // Increase the number of blocks every 60 seconds
         function increaseDifficulty() {
             gameTime++;
-            if (gameTime % 60 === 0) { // Every 60 seconds
-                for (let i = 0; i < 20; i++) { // Increase the number of obstacles created at once
-                    createObstacle(); // Add 20 obstacles every minute
+            if (gameTime % 60 === 0) {
+                for (let i = 0; i < 20; i++) {
+                    createObstacle();
                 }
             }
-
-            // Speed up blocks after 1 minute and 10 seconds
             if (gameTime >= speedIncrease1) {
-                obstacleSpeed = 5; // Increase speed slightly
+                obstacleSpeed = 5;
             }
-
-            // Speed up blocks more after 1 minute and 40 seconds
             if (gameTime >= speedIncrease2) {
-                obstacleSpeed = 6; // Increase speed more
+                obstacleSpeed = 6;
             }
         }
 
-        // Start the game
         function startGame() {
-            playerColor = document.getElementById("colorPicker").value; // Get selected color
-
-            document.getElementById("startScreen").style.display = "none"; // Hide the start screen
-            updateHighScore(); // Update the displayed high score
-
-            movePlayer(); // Set up player controls
-            obstacleInterval = setInterval(createObstacle, 100); // Create obstacles every 1 second initially
-            gameInterval = setInterval(gameLoop, 16); // 60 FPS
-            timeInterval = setInterval(increaseDifficulty, 1000); // Track game time
-        
-        movePlayer(); // Set up player controls
-setupTouchControls(); // Set up touch controls
-
+            playerColor = document.getElementById("colorPicker").value;
+            document.getElementById("startScreen").style.display = "none";
+            updateHighScore();
+            movePlayer();
+            setupTouchControls();
+            obstacleInterval = setInterval(createObstacle, 100);
+            gameInterval = setInterval(gameLoop, 16);
+            timeInterval = setInterval(increaseDifficulty, 1000);
         }
     </script>
 </body>
