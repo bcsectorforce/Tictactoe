@@ -184,6 +184,27 @@
             });
         }
 
+       
+        // Touch controls for mobile devices
+function setupTouchControls() {
+    canvas.addEventListener("touchstart", function(event) {
+        const touchX = event.touches[0].clientX;
+        const canvasRect = canvas.getBoundingClientRect();
+        const relativeX = touchX - canvasRect.left;
+
+        if (relativeX < canvas.width / 2) {
+            velocityX = -playerSpeed; // Move left
+        } else {
+            velocityX = playerSpeed; // Move right
+        }
+    });
+
+    canvas.addEventListener("touchend", function() {
+        velocityX = 0; // Stop moving when the user lifts their finger
+    });
+}
+
+        
         // Update player's horizontal position for smooth movement
         function updatePlayerPosition() {
             playerX += velocityX;
@@ -234,6 +255,10 @@
             obstacleInterval = setInterval(createObstacle, 100); // Create obstacles every 1 second initially
             gameInterval = setInterval(gameLoop, 16); // 60 FPS
             timeInterval = setInterval(increaseDifficulty, 1000); // Track game time
+        
+        movePlayer(); // Set up player controls
+setupTouchControls(); // Set up touch controls
+
         }
     </script>
 </body>
