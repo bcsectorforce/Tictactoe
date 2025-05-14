@@ -5,26 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Falling Blocks Game</title>
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       background: black;
       color: white;
       font-family: monospace;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
+      height: 100%;
+      overflow: hidden;
     }
     canvas {
       display: block;
-      margin-top: 20px;
+      max-width: 100vw;
+      max-height: 100vh;
     }
-    .color-button {
-      margin: 5px;
-      width: 30px;
-      height: 30px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
+    h1 {
+      font-size: 1.5em;
+      margin: 10px;
+      text-align: center;
     }
   </style>
 </head>
@@ -35,16 +37,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/bmoren/p5.collide2D/p5.collide2d.min.js"></script>
 
-  <!-- Game script -->
   <script>
     let player1, player2;
     let blocks = [];
     let gameOver = false;
 
     function setup() {
-      createCanvas(400, 600);
-      player1 = new Player(width / 2, height - 30, color('cyan'), 'ArrowLeft', 'ArrowRight');
-      player2 = new Player(2 * width / 2, height - 50, color('magenta'), 'a', 'd');
+      createCanvas(windowWidth, windowHeight * 0.8);
+      player1 = new Player(width / 4, height - 40, color('cyan'), 'ArrowLeft', 'ArrowRight');
+      player2 = new Player(3 * width / 4, height - 40, color('magenta'), 'a', 'd');
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight * 0.8);
+      // reposition players to bottom after resize
+      player1.y = height - 40;
+      player2.y = height - 40;
     }
 
     function draw() {
