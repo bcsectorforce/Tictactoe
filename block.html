@@ -184,6 +184,11 @@
   }
 }
 
+// ➕ This part makes the score clickable to return to homepage
+document.getElementById("score").addEventListener("click", () => {
+  window.location.href = "https://tictactoe-5u4.pages.dev/block";
+});
+
     function updateScore() {
       score++;
       document.getElementById("score").textContent = `Score: ${score}`;
