@@ -272,10 +272,41 @@
       timeInterval = setInterval(increaseDifficulty, 1000);
     }
 
-    document.getElementById("invisibleButton").addEventListener("click", () => {
-      invincible = true;
-      alert("Secret Mode Activated: Invincibility!");
-    });
+   const keyState = {
+  a: false,
+  s: false
+};
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "a") {
+    keyState.a = true;
+  }
+  if (event.key === "s") {
+    keyState.s = true;
+  }
+
+  if (keyState.a && keyState.s) {
+    console.log("A and S pressed together!");
+    // Do your action here, e.g., activate invisibility
+  }
+});
+
+document.addEventListener("keyup", (event) => {
+  if (event.key === "a") {
+    keyState.a = false;
+  }
+  if (event.key === "s") {
+    keyState.s = false;
+  }
+});
+
+
+document.addEventListener("keyup", (event) => {
+  if (event.key in keyState) {
+    keyState[event.key] = false;
+  }
+});
+
 
     document.querySelectorAll(".toggleWord").forEach(word => {
       word.addEventListener("click", () => {
