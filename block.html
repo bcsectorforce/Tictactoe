@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dodge the Obstacles Game</title>
   <style>
     body {
@@ -27,9 +27,12 @@
     #score, #highScore {
       position: absolute;
       font-size: 24px;
+      left: 10px;
+      user-select: none;
     }
     #score {
       top: 10px;
+      cursor: pointer;
     }
     #highScore {
       top: 40px;
@@ -72,7 +75,7 @@
       <span class="toggleWord">Character</span>
       <span class="toggleWord">Color</span>
     </h1>
-    <input type="color" id="colorPicker" value="#00ff00">
+    <input type="color" id="colorPicker" value="#00ff00" />
     <button onclick="startGame()">Start Game</button>
   </div>
   <canvas id="gameCanvas"></canvas>
@@ -105,13 +108,11 @@
     let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
     let obstacles = [];
     let gameInterval, obstacleInterval, timeInterval;
-    let maxObstacles = 1;
     let gameTime = 0;
     let obstacleSpeed = 5;
     let speedIncrease1 = 70;
     let speedIncrease2 = 100;
     let invincible = false;
-    let disableClickCount = 0;
 
     function drawPlayer() {
       ctx.fillStyle = playerColor;
@@ -154,15 +155,7 @@
           playerY < obstacle.y + obstacle.height &&
           playerY + playerHeight > obstacle.y
         ) {
-          clearInterval(gameInterval);
-          clearInterval(obstacleInterval);
-          clearInterval(timeInterval);
-          if (score > highScore) {
-            highScore = score;
-            localStorage.setItem('highScore', highScore);
-          }
-          alert(`Game Over! Your final score is ${score}`);
-          window.location.reload();
+          endGame();
         }
       }
     }
@@ -170,16 +163,20 @@
     function checkWallCollision() {
       if (invincible) return;
       if (playerX <= 0 || playerX + playerWidth >= canvas.width) {
-        clearInterval(gameInterval);
-        clearInterval(obstacleInterval);
-        clearInterval(timeInterval);
-        if (score > highScore) {
-          highScore = score;
-          localStorage.setItem('highScore', highScore);
-        }
-        alert(`Game Over! You hit the wall! Final score: ${score}`);
-        window.location.reload();
+        endGame(true);
       }
+    }
+
+    function endGame(hitWall = false) {
+      clearInterval(gameInterval);
+      clearInterval(obstacleInterval);
+      clearInterval(timeInterval);
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('highScore', highScore);
+      }
+      alert(`Game Over! ${hitWall ? 'You hit the wall!' : 'Your final score is'} ${score}`);
+      window.location.reload();
     }
 
     document.getElementById("score").addEventListener("click", () => {
@@ -244,6 +241,7 @@
       checkCollision();
       checkWallCollision();
       updateScore();
+      updateHighScore();
     }
 
     function increaseDifficulty() {
@@ -261,6 +259,39 @@
       }
     }
 
+    // Key press tracking for invisibility activation
+    const keyState = {
+      a: false,
+      s: false,
+      w: false,
+      q: false
+    };
+
+    document.addEventListener("keydown", (event) => {
+      const key = event.key.toLowerCase();
+      if (keyState.hasOwnProperty(key)) keyState[key] = true;
+
+      // Activate invisibility when A+S pressed
+      if (keyState.a && keyState.s && !invincible) {
+        invincible = true;
+        console.log("Invisibility activated!");
+        // Optional: add visual feedback here
+      }
+
+      // Deactivate invisibility when W+Q pressed
+      if (keyState.w && keyState.q && invincible) {
+        invincible = false;
+        console.log("Invisibility deactivated!");
+      
+        // Optional: reset visuals here
+      }
+    });
+
+    document.addEventListener("keyup", (event) => {
+      const key = event.key.toLowerCase();
+      if (keyState.hasOwnProperty(key)) keyState[key] = false;
+    });
+
     function startGame() {
       playerColor = document.getElementById("colorPicker").value;
       document.getElementById("startScreen").style.display = "none";
@@ -271,59 +302,7 @@
       gameInterval = setInterval(gameLoop, 16);
       timeInterval = setInterval(increaseDifficulty, 1000);
     }
-
-   const keyState = {
-  a: false,
-  s: false
-};
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "a") {
-    keyState.a = true;
-  }
-  if (event.key === "s") {
-    keyState.s = true;
-  }
-
-  if (keyState.a && keyState.s) {
-    console.log("A and S pressed together!");
-    // Do your action here, e.g., activate invisibility
-  }
-});
-
-document.addEventListener("keyup", (event) => {
-  if (event.key === "a") {
-    keyState.a = false;
-  }
-  if (event.key === "s") {
-    keyState.s = false;
-  }
-});
-
-
-document.addEventListener("keyup", (event) => {
-  if (event.key in keyState) {
-    keyState[event.key] = false;
-  }
-});
-
-
-    document.querySelectorAll(".toggleWord").forEach(word => {
-      word.addEventListener("click", () => {
-        disableClickCount++;
-        if (disableClickCount >= 2) {
-          invincible = false;
-          disableClickCount = 0;
-          // ✅ Save score when invincibility is turned off
-          if (score > highScore) {
-            highScore = score;
-            localStorage.setItem('highScore', highScore);
-            updateHighScore();
-          }
-          alert("Secret Mode Deactivated");
-        }
-      });
-    });
   </script>
 </body>
 </html>
+
