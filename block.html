@@ -169,19 +169,20 @@
       }
     }
 
-    function checkWallCollision() {
-      if (playerX <= 0 || playerX + playerWidth >= canvas.width) {
-        clearInterval(gameInterval);
-        clearInterval(obstacleInterval);
-        clearInterval(timeInterval);
-        if (score > highScore) {
-          highScore = score;
-          localStorage.setItem('highScore', highScore);
-        }
-        alert(`Game Over! You hit the wall! Final score: ${score}`);
-        window.location.reload();
-      }
+   function checkWallCollision() {
+  if (invincible) return;
+  if (playerX <= 0 || playerX + playerWidth >= canvas.width) {
+    clearInterval(gameInterval);
+    clearInterval(obstacleInterval);
+    clearInterval(timeInterval);
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('highScore', highScore);
     }
+    alert(`Game Over! You hit the wall! Final score: ${score}`);
+    window.location.reload();
+  }
+}
 
     function updateScore() {
       score++;
