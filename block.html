@@ -51,8 +51,6 @@
     #startScreen button:hover, #colorPicker:hover {
       background-color: #666;
     }
-
-    /* Invisible button over high score */
     #invisibleButton {
       position: absolute;
       top: 40px;
@@ -169,25 +167,24 @@
       }
     }
 
-   function checkWallCollision() {
-  if (invincible) return;
-  if (playerX <= 0 || playerX + playerWidth >= canvas.width) {
-    clearInterval(gameInterval);
-    clearInterval(obstacleInterval);
-    clearInterval(timeInterval);
-    if (score > highScore) {
-      highScore = score;
-      localStorage.setItem('highScore', highScore);
+    function checkWallCollision() {
+      if (invincible) return;
+      if (playerX <= 0 || playerX + playerWidth >= canvas.width) {
+        clearInterval(gameInterval);
+        clearInterval(obstacleInterval);
+        clearInterval(timeInterval);
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('highScore', highScore);
+        }
+        alert(`Game Over! You hit the wall! Final score: ${score}`);
+        window.location.reload();
+      }
     }
-    alert(`Game Over! You hit the wall! Final score: ${score}`);
-    window.location.reload();
-  }
-}
 
-// ➕ This part makes the score clickable to return to homepage
-document.getElementById("score").addEventListener("click", () => {
-  window.location.href = "https://tictactoe-5u4.pages.dev/block";
-});
+    document.getElementById("score").addEventListener("click", () => {
+      window.location.href = "https://tictactoe-5u4.pages.dev/block";
+    });
 
     function updateScore() {
       score++;
@@ -275,19 +272,23 @@ document.getElementById("score").addEventListener("click", () => {
       timeInterval = setInterval(increaseDifficulty, 1000);
     }
 
-    // Secret button logic
     document.getElementById("invisibleButton").addEventListener("click", () => {
       invincible = true;
       alert("Secret Mode Activated: Invincibility!");
     });
 
-    // Double-click any word in "Select Character Color" to disable invincibility
     document.querySelectorAll(".toggleWord").forEach(word => {
       word.addEventListener("click", () => {
         disableClickCount++;
         if (disableClickCount >= 2) {
           invincible = false;
           disableClickCount = 0;
+          // ✅ Save score when invincibility is turned off
+          if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('highScore', highScore);
+            updateHighScore();
+          }
           alert("Secret Mode Deactivated");
         }
       });
