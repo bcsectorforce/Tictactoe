@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trash Rocket 🚀</title>
+  <style>
+    body {
+      background-color: #0f0f0f;
+      color: #00ff88;
+      font-family: 'Courier New', Courier, monospace;
+      text-align: center;
+      padding: 40px;
+      margin: 0;
+    }
+
+    /* Persistent banner at top */
+    #banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #004422;
+      color: #00ff88;
+      padding: 10px 0;
+      font-weight: bold;
+      font-size: 1.2em;
+      border-bottom: 2px solid #00ff88;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0,255,136,0.5);
+      user-select: none;
+    }
+
+    /* Add top padding so content isn't under the fixed banner */
+    #content {
+      padding-top: 50px;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-top: 0;
+    }
+
+    #junk-count, #rocket-count, #distance-count {
+      font-size: 1.5em;
+      margin: 10px 0;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 1.1em;
+      background-color: #222;
+      border: 2px solid #00ff88;
+      color: #00ff88;
+      cursor: pointer;
+      border-radius: 10px;
+      margin: 8px;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background-color: #00ff88;
+      color: #0f0f0f;
+    }
+
+    #store, #inventory, #builder, #upgrades, #milestones {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #191919;
+      border-radius: 12px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .part {
+      background-color: #111;
+      margin: 10px auto;
+      padding: 10px;
+      border: 1px dashed #00ff88;
+      width: 320px;
+      border-radius: 12px;
+    }
+
+    .inv-item {
+      margin: 5px 0;
+    }
+
+    #rocket-preview {
+      margin-top: 20px;
+      font-size: 1.2em;
+      line-height: 1.8em;
+    }
+
+    #log {
+      margin-top: 20px;
+      color: #888;
+      min-height: 24px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #launch-animation {
+      margin-top: 20px;
+      height: 100px;
+      font-size: 2em;
+      animation: fly 2s ease-out;
+    }
+
+    @keyframes fly {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-200px); opacity: 0; }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #00ff88;
+    }
+    th, td {
+      border: 1px solid #00ff88;
+      padding: 6px;
+      text-align: left;
+    }
+    th {
+      background-color: #004422;
+    }
+  </style>
+</head>
+<body>
+  <div id="banner">Welcome to Trash Rocket! Ready for launch?</div>
+
+  <div id="content">
+    <h1>🚀 Trash Rocket</h1>
+    <div id="junk-count"></div>
+    <div id="rocket-count"></div>
+    <div id="distance-count"></div>
+    <button onclick="collectJunk()">Collect Junk</button>
+
+    <div id="store">
+      <h2>🛒 Rocket Parts Store</h2>
+      <div class="part"><strong>Engine</strong> — Cost: 20 Junk<br>
+        <button onclick="buyPart('Engine', 20)">Buy Engine</button>
+      </div>
+      <div class="part"><strong>Body</strong> — Cost: 15 Junk<br>
+        <button onclick="buyPart('Body', 15)">Buy Body</button>
+      </div>
+      <div class="part"><strong>Nose Cone</strong> — Cost: 10 Junk<br>
+        <button onclick="buyPart('Nose Cone', 10)">Buy Nose Cone</button>
+      </div>
+      <div class="part"><strong>Warp Drive</strong> — Cost: 100 Junk<br>
+        <button onclick="buyPart('Warp Drive', 100)">Buy Warp Drive</button>
+      </div>
+      <div class="part"><strong>Alien Tech</strong> — Cost: 120 Junk<br>
+        <button onclick="buyPart('Alien Tech', 120)">Buy Alien Tech</button>
+      </div>
+      <div class="part"><strong>Junk-Eating Drones</strong> — Cost: 80 Junk<br>
+        <button onclick="buyPart('Junk-Eating Drones', 80)">Buy Drones</button>
+      </div>
+      <div class="part"><strong>Solid Rocket Boosters</strong> — Cost: 90 Junk<br>
+        <button onclick="buyPart('Solid Rocket Boosters', 90)">Buy Boosters</button>
+      </div>
+      <div class="part"><strong>Interium Cryogenic Propulsion Stage</strong> — Cost: 150 Junk<br>
+        <button onclick="buyPart('Interium Cryogenic Propulsion Stage', 150)">Buy Cryo Stage</button>
+      </div>
+    </div>
+
+    <div id="inventory">
+      <h2>🧰 Your Rocket Inventory</h2>
+      <button onclick="clearInventory()" style="background-color:#550000;">Clear Inventory</button>
+      <div id="inv-list"></div>
+    </div>
+
+    <button id="restart-btn" style="margin-top:10px; padding:8px 12px; background:#003300; color:#b3ffb3; border:none; cursor:pointer;">
+  Restart Game (Keep Achievements)
+</button>
+
+    
+    <div id="builder">
+      <h2>🧪 Build Your Rocket</h2>
+      <button onclick="assembleRocket()">Assemble Rocket</button>
+      <div id="rocket-preview"></div>
+      <div id="launch-area" style="display:none;">
+        <button onclick="launchRocket()">🚀 Launch Rocket</button>
+        <div id="launch-animation"></div>
+      </div>
+    </div>
+
+    <div id="upgrades">
+      <h2>🔄 Passive Junk Collectors</h2>
+      <div class="part">Space Vacuum — Cost: 50 Junk<br>
+        <button onclick="buyCollector('vacuum', 50, 1)">+1 Junk/sec</button>
+      </div>
+      <div class="part">Magnet Arm — Cost: 200 Junk<br>
+        <button onclick="buyCollector('magnet', 200, 5)">+5 Junk/sec</button>
+      </div>
+    </div>
+
+    <div id="milestones">
+      <h2>🏆 Milestones</h2>
+      <table>
+        <tbody>
+          <tr><th>Achievement</th><th>Value</th></tr>
+          <tr><td>Highest Junk Count</td><td id="ms-junk">0</td></tr>
+          <tr><td>Most Parts Used</td><td id="ms-parts-used">0</td></tr>
+          <tr><td>Most Parts Spent</td><td id="ms-parts-spent">0</td></tr>
+          <tr><td>Farthest Launch Distance (km)</td><td id="ms-distance">0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script>
+    let junk = parseInt(localStorage.getItem('junk')) || 0;
+    let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+    let builtRocket = [];
+    let rocketsLaunched = parseInt(localStorage.getItem('rockets')) || 0;
+    let passiveRate = parseInt(localStorage.getItem('passive')) || 0;
+    let totalDistance = parseInt(localStorage.getItem('distance')) || 0;
+
+    // Milestones stored in localStorage
+    let milestones = JSON.parse(localStorage.getItem('milestones')) || {
+      highestJunk: junk,
+      mostPartsUsed: 0,
+      mostPartsSpent: 0,
+      farthestDistance: 0
+    };
+
+    // Track total parts spent across all purchases
+    let totalPartsSpent = parseInt(localStorage.getItem('totalPartsSpent')) || 0;
+
+    const exoticEffects = {
+      "Warp Drive": { distanceMultiplier: 2, bonusJunkMultiplier: 3, launchText: "⚡ Warp drive engaged! Hyper-speed launch!" },
+      "Alien Tech": { distanceMultiplier: 1.5, bonusJunkMultiplier: 2, launchText: "👽 Alien technology boosts efficiency!" },
+      "Junk-Eating Drones": { passiveBonus: 3, launchText: "🤖 Drones are cleaning up space debris during flight!" },
+      "Solid Rocket Boosters": { distanceBonus: 100, launchText: "🔥 Solid Rocket Boosters give an extra kick!" },
+      "Interium Cryogenic Propulsion Stage": { distanceMultiplier: 2.5, bonusJunkMultiplier: 2.5, launchText: "❄️ Cryogenic propulsion super charges the rocket!" }
+};
+
+function updateDisplay() {
+  document.getElementById('junk-count').textContent = `Junk Collected: ${junk}`;
+  document.getElementById('rocket-count').textContent = `Rockets Launched: ${rocketsLaunched}`;
+  document.getElementById('distance-count').textContent = `Total Distance Flown: ${totalDistance} km`;
+  updateInventoryDisplay();
+  updateMilestonesDisplay();
+}
+
+function restartGameKeepAchievements() {
+  // Keep milestones as is (already stored in `milestones` object)
+  // Reset gameplay variables:
+  junk = 0;
+  inventory = [];
+  rocketsLaunched = 0;
+  totalDistance = 0;
+  passiveRate = 0;
+  totalPartsSpent = 0;
+  builtRocket = [];
+
+  // Save the reset gameplay state to localStorage
+  localStorage.setItem('junk', junk);
+  localStorage.setItem('inventory', JSON.stringify(inventory));
+  localStorage.setItem('rockets', rocketsLaunched);
+  localStorage.setItem('distance', totalDistance);
+  localStorage.setItem('passive', passiveRate);
+  localStorage.setItem('totalPartsSpent', totalPartsSpent);
+
+  // Milestones remain untouched, no update to localStorage needed here
+
+  updateDisplay();
+  renderRocketPreview();
+  logMessage('Game restarted but achievements kept.');
+}
+
+
+function updateInventoryDisplay() {
+  const invList = document.getElementById('inv-list');
+  if (inventory.length === 0) {
+    invList.innerHTML = "<i>No parts in inventory</i>";
+    return;
+  }
+  let counts = {};
+  inventory.forEach(part => counts[part] = (counts[part] || 0) + 1);
+  let html = '';
+  for (let part in counts) {
+    html += `<div class="inv-item">${part}: ${counts[part]}</div>`;
+  }
+  invList.innerHTML = html;
+}
+
+function collectJunk() {
+  junk += 1;
+  if (junk > milestones.highestJunk) {
+    milestones.highestJunk = junk;
+  }
+  localStorage.setItem('junk', junk);
+  localStorage.setItem('milestones', JSON.stringify(milestones));
+  updateDisplay();
+  logMessage('Collected 1 junk.');
+}
+
+function buyPart(partName, cost) {
+  if (junk < cost) {
+    logMessage('Not enough junk to buy ' + partName + '!');
+    return;
+  }
+  junk -= cost;
+  inventory.push(partName);
+  totalPartsSpent += cost;
+  if (totalPartsSpent > milestones.mostPartsSpent) {
+    milestones.mostPartsSpent = totalPartsSpent;
+  }
+  localStorage.setItem('junk', junk);
+  localStorage.setItem('inventory', JSON.stringify(inventory));
+  localStorage.setItem('totalPartsSpent', totalPartsSpent);
+  localStorage.setItem('milestones', JSON.stringify(milestones));
+  updateDisplay();
+  logMessage('Bought ' + partName + ' for ' + cost + ' junk.');
+}
+
+function assembleRocket() {
+  if (inventory.length === 0) {
+    logMessage('No parts to build rocket!');
+    return;
+  }
+  builtRocket = [...inventory];
+  inventory = [];
+  if (builtRocket.length > milestones.mostPartsUsed) {
+    milestones.mostPartsUsed = builtRocket.length;
+  }
+  localStorage.setItem('inventory', JSON.stringify(inventory));
+  localStorage.setItem('milestones', JSON.stringify(milestones));
+  updateDisplay();
+  renderRocketPreview();
+  logMessage('Rocket assembled with ' + builtRocket.length + ' parts.');
+  document.getElementById('launch-area').style.display = 'block';
+}
+
+function renderRocketPreview() {
+  if (builtRocket.length === 0) {
+    document.getElementById('rocket-preview').textContent = 'No rocket assembled.';
+    document.getElementById('launch-area').style.display = 'none';
+    return;
+  }
+  // Show parts stacked visually as text
+  let preview = builtRocket.map(part => `|${part}|`).join('\n');
+  document.getElementById('rocket-preview').textContent = preview;
+}
+
+function launchRocket() {
+  if (builtRocket.length === 0) {
+    logMessage('No rocket assembled!');
+    return;
+  }
+  rocketsLaunched++;
+  // Calculate base distance = number of parts * 50
+  let baseDistance = builtRocket.length * 50;
+  let distance = baseDistance;
+
+  // Bonuses from exotic parts
+  let bonusJunk = 0;
+  let extraDistance = 0;
+  let launchTexts = [];
+
+  builtRocket.forEach(part => {
+    if (exoticEffects[part]) {
+      let e = exoticEffects[part];
+      if (e.distanceMultiplier) {
+        distance *= e.distanceMultiplier;
+      }
+      if (e.bonusJunkMultiplier) {
+        bonusJunk += Math.floor(junk * (e.bonusJunkMultiplier - 1) * 0.1); // 10% of junk scaled by multiplier
+      }
+      if (e.passiveBonus) {
+        passiveRate += e.passiveBonus;
+        localStorage.setItem('passive', passiveRate);
+        logMessage(e.launchText + ' Passive collectors boosted!');
+      }
+      if (e.distanceBonus) {
+        extraDistance += e.distanceBonus;
+      }
+      launchTexts.push(e.launchText);
+    }
+  });
+
+  distance += extraDistance;
+  distance = Math.floor(distance);
+
+  junk += bonusJunk;
+  totalDistance += distance;
+
+  if (totalDistance > milestones.farthestDistance) {
+    milestones.farthestDistance = totalDistance;
+  }
+  localStorage.setItem('junk', junk);
+  localStorage.setItem('rockets', rocketsLaunched);
+  localStorage.setItem('distance', totalDistance);
+  localStorage.setItem('milestones', JSON.stringify(milestones));
+  updateDisplay();
+
+  // Launch animation and messages
+  const anim = document.getElementById('launch-animation');
+  anim.textContent = '🚀 Launching...';
+  anim.style.animation = 'fly 2s ease-out';
+  setTimeout(() => {
+    anim.textContent = `Rocket traveled ${distance} km! Bonus junk: ${bonusJunk}`;
+    if (launchTexts.length) {
+      anim.textContent += '\n' + launchTexts.join(' ');
+    }
+  }, 2000);
+
+  builtRocket = [];
+  renderRocketPreview();
+  document.getElementById('launch-area').style.display = 'none';
+
+  logMessage(`Rocket launched! Distance: ${distance} km, Bonus junk: ${bonusJunk}`);
+}
+
+// Passive collectors
+function buyCollector(name, cost, rate) {
+  if (junk < cost) {
+    logMessage(`Not enough junk to buy ${name}!`);
+    return;
+  }
+  junk -= cost;
+  passiveRate += rate;
+  localStorage.setItem('junk', junk);
+  localStorage.setItem('passive', passiveRate);
+  logMessage(`Bought ${name} for ${cost} junk. +${rate} junk/sec.`);
+  updateDisplay();
+}
+
+function passiveCollect() {
+  junk += passiveRate;
+  if (junk > milestones.highestJunk) {
+    milestones.highestJunk = junk;
+  }
+  localStorage.setItem('junk', junk);
+  localStorage.setItem('milestones', JSON.stringify(milestones));
+  updateDisplay();
+}
+
+setInterval(passiveCollect, 1000);
+
+function logMessage(msg) {
+  const log = document.getElementById('log');
+  log.textContent = msg;
+}
+
+// Clear inventory button
+function clearInventory() {
+  inventory = [];
+  localStorage.setItem('inventory', JSON.stringify(inventory));
+  updateDisplay();
+  renderRocketPreview();
+  logMessage('Inventory cleared.');
+}
+
+function updateMilestonesDisplay() {
+  document.getElementById('ms-junk').textContent = milestones.highestJunk;
+  document.getElementById('ms-parts-used').textContent = milestones.mostPartsUsed;
+  document.getElementById('ms-parts-spent').textContent = milestones.mostPartsSpent;
+  document.getElementById('ms-distance').textContent = milestones.farthestDistance;
+}
+
+// Initial render
+updateDisplay();
+renderRocketPreview();
+
+document.getElementById('restart-btn').addEventListener('click', restartGameKeepAchievements);
+
+</script> </body> </html>
