@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pong vs AI</title>
+<style>
+  body {
+    margin: 0;
+    background: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+    font-family: Arial, sans-serif;
+    user-select: none;
+  }
+  canvas {
+    background: #222;
+    display: block;
+    margin-top: 10px;
+    border: 2px solid white;
+    width: 95vw;
+    height: 60vh;
+  }
+  #difficultySelect, #themeSelect {
+    margin-top: 10px;
+    font-size: 16px;
+  }
+  #scoreboard {
+    margin-top: 10px;
+    font-size: 20px;
+  }
+  .slider-container {
+    width: 95vw;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .slider-container input {
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<h1>Pong: Player vs AI</h1>
+
+<select id="difficultySelect">
+  <option value="easy">Easy</option>
+  <option value="medium" selected>Medium</option>
+  <option value="hard">Hard</option>
+</select>
+
+<select id="themeSelect">
+  <option value="default">Default</option>
+  <option value="neon">Neon</option>
+  <option value="inverted">Inverted</option>
+</select>
+
+<canvas id="gameCanvas" width="600" height="400"></canvas>
+
+<div class="slider-container">
+  <label for="touchSlider">Move:</label>
+  <input type="range" id="touchSlider" min="0" max="100" value="50">
+</div>
+
+<div id="scoreboard">Player: 0 | AI: 0</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const WIDTH = canvas.width;
+  const HEIGHT = canvas.height;
+
+  const PADDLE_WIDTH = 10;
+  const PADDLE_HEIGHT = 80;
+  const BALL_SIZE = 12;
+
+  const PLAYER_SPEED = 6;
+  const BALL_SPEED_START = 4;
+
+  let playerY = HEIGHT / 2 - PADDLE_HEIGHT / 2;
+  let aiY = HEIGHT / 2 - PADDLE_HEIGHT / 2;
+  let ballX = WIDTH / 2;
+  let ballY = HEIGHT / 2;
+  let ballSpeedX = BALL_SPEED_START * (Math.random() > 0.5 ? 1 : -1);
+  let ballSpeedY = BALL_SPEED_START * (Math.random() * 2 - 1);
+
+  let playerScore = 0;
+  let aiScore = 0;
+
+  let upPressed = false;
+  let downPressed = false;
+
+  const difficulties = {
+    easy: { speed: 2, reaction: 0.04 },
+    medium: { speed: 4, reaction: 0.08 },
+    hard: { speed: 6, reaction: 0.14 },
+  };
+  let currentDifficulty = 'medium';
+
+  let theme = 'default';
+  const speedIncreaseRate = 0.002;
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp') upPressed = true;
+    else if (e.key === 'ArrowDown') downPressed = true;
+  });
+  document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp') upPressed = false;
+    else if (e.key === 'ArrowDown') downPressed = false;
+  });
+
+  document.getElementById('difficultySelect').addEventListener('change', e => {
+    currentDifficulty = e.target.value;
+  });
+
+  document.getElementById('themeSelect').addEventListener('change', e => {
+    theme = e.target.value;
+  });
+
+  document.getElementById('touchSlider').addEventListener('input', e => {
+    const percent = parseInt(e.target.value);
+    playerY = (HEIGHT - PADDLE_HEIGHT) * percent / 100;
+  });
+
+  function resetBall() {
+    ballX = WIDTH / 2;
+    ballY = HEIGHT / 2;
+    ballSpeedX = BALL_SPEED_START * (Math.random() > 0.5 ? 1 : -1);
+    ballSpeedY = BALL_SPEED_START * (Math.random() * 2 - 1);
+  }
+
+  function drawRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  }
+  function drawCircle(x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawNet(color) {
+    const netWidth = 2;
+    const netHeight = 10;
+    ctx.fillStyle = color;
+    for (let i = 0; i < HEIGHT; i += 20) {
+      ctx.fillRect(WIDTH / 2 - netWidth / 2, i, netWidth, netHeight);
+    }
+  }
+
+  function update() {
+    if (upPressed) playerY -= PLAYER_SPEED;
+    if (downPressed) playerY += PLAYER_SPEED;
+
+    if (playerY < 0) playerY = 0;
+    if (playerY + PADDLE_HEIGHT > HEIGHT) playerY = HEIGHT - PADDLE_HEIGHT;
+
+    const ai = difficulties[currentDifficulty];
+    const aiCenter = aiY + PADDLE_HEIGHT / 2;
+    const deltaY = ballY - aiCenter;
+    if (Math.abs(deltaY) > 5) {
+      aiY += deltaY * ai.reaction;
+      if (aiY < 0) aiY = 0;
+      if (aiY + PADDLE_HEIGHT > HEIGHT) aiY = HEIGHT - PADDLE_HEIGHT;
+    }
+
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+
+    if (ballY - BALL_SIZE / 2 < 0 || ballY + BALL_SIZE / 2 > HEIGHT) {
+      ballSpeedY = -ballSpeedY;
+    }
+
+    if (
+      ballX - BALL_SIZE / 2 < PADDLE_WIDTH &&
+      ballY > playerY &&
+      ballY < playerY + PADDLE_HEIGHT
+    ) {
+      ballSpeedX = -ballSpeedX;
+      const collidePoint = (ballY - (playerY + PADDLE_HEIGHT / 2)) / (PADDLE_HEIGHT / 2);
+      ballSpeedY = collidePoint * 5;
+    }
+
+    if (
+      ballX + BALL_SIZE / 2 > WIDTH - PADDLE_WIDTH &&
+      ballY > aiY &&
+      ballY < aiY + PADDLE_HEIGHT
+    ) {
+      ballSpeedX = -ballSpeedX;
+      const collidePoint = (ballY - (aiY + PADDLE_HEIGHT / 2)) / (PADDLE_HEIGHT / 2);
+      ballSpeedY = collidePoint * 5;
+    }
+
+    if (ballX < 0) {
+      aiScore++;
+      resetBall();
+    }
+    if (ballX > WIDTH) {
+      playerScore++;
+      resetBall();
+    }
+
+    ballSpeedX += ballSpeedX > 0 ? speedIncreaseRate : -speedIncreaseRate;
+    ballSpeedY += ballSpeedY > 0 ? speedIncreaseRate : -speedIncreaseRate;
+
+    document.getElementById('scoreboard').textContent = `Player: ${playerScore} | AI: ${aiScore}`;
+  }
+
+  function draw() {
+    let bgColor = 'black';
+    let fgColor = 'white';
+
+    if (theme === 'neon') {
+      bgColor = '#0f0f0f';
+      fgColor = '#00ffcc';
+    } else if (theme === 'inverted') {
+      bgColor = 'white';
+      fgColor = 'black';
+    }
+
+    drawRect(0, 0, WIDTH, HEIGHT, bgColor);
+    drawNet(fgColor);
+    drawRect(0, playerY, PADDLE_WIDTH, PADDLE_HEIGHT, fgColor);
+    drawRect(WIDTH - PADDLE_WIDTH, aiY, PADDLE_WIDTH, PADDLE_HEIGHT, fgColor);
+    drawCircle(ballX, ballY, BALL_SIZE / 2, fgColor);
+  }
+
+  function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+  }
+
+  gameLoop();
+})();
+</script>
+
+</body>
+</html>
