@@ -214,6 +214,14 @@
     <div id="log"></div>
   </div>
 
+  <div id="alien-workers">
+      <h2>👽 Alien Workers</h2>
+      <p>They build a full rocket every second. Cost per launch: 100 junk.</p>
+      <button onclick="hireAlienWorkers()">Hire Alien Workers</button>
+      <p id="alien-worker-count">Alien Workers: 0</p>
+    </div>
+  </div>
+
   <script>
     let junk = parseInt(localStorage.getItem('junk')) || 0;
     let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
@@ -459,7 +467,49 @@ function clearInventory() {
   logMessage('Inventory cleared.');
 }
 
-function updateMilestonesDisplay() {
+let alienWorkers = 0;
+
+    function hireAlienWorkers() {
+      alienWorkers++;
+      document.getElementById('alien-worker-count').textContent = `Alien Workers: ${alienWorkers}`;
+    }
+
+    setInterval(() => {
+      for (let i = 0; i < alienWorkers; i++) {
+        if (junk >= 100) {
+          junk -= 100;
+          rocketsLaunched++;
+          const dist = Math.floor(Math.random() * 1000) + 1000;
+          totalDistance += dist;
+          milestones.farthestDistance = Math.max(milestones.farthestDistance, dist);
+          updateUI();
+          logMessage('🚀 Alien-built rocket launched! Distance: ' + dist + ' km');
+        }
+      }
+    }, 1000);
+
+    function updateMilestones() {
+      document.getElementById('ms-junk').textContent = milestones.highestJunk;
+      document.getElementById('ms-parts-used').textContent = milestones.mostPartsUsed;
+      document.getElementById('ms-parts-spent').textContent = milestones.mostPartsSpent;
+      document.getElementById('ms-distance').textContent = milestones.farthestDistance;
+    }
+
+    function randomAlienEvent() {
+      const chance = Math.random();
+      if (chance < 0.05) {
+        const bonus = Math.floor(Math.random() * 100) + 50;
+        junk += bonus;
+        logMessage('🛸 Alien encounter! They gave you ' + bonus + ' junk!');
+        updateUI();
+      }
+    }
+
+    setInterval(randomAlienEvent, 30000);
+
+    
+    
+    function updateMilestonesDisplay() {
   document.getElementById('ms-junk').textContent = milestones.highestJunk;
   document.getElementById('ms-parts-used').textContent = milestones.mostPartsUsed;
   document.getElementById('ms-parts-spent').textContent = milestones.mostPartsSpent;
