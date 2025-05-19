@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NASA Mission Control</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #0f0;
+      font-family: monospace;
+      padding: 20px;
+    }
+    #console {
+      border: 2px solid #0f0;
+      padding: 20px;
+      height: 400px;
+      overflow-y: auto;
+      background-color: #111;
+      white-space: pre-wrap;
+      line-height: 1.4;
+    }
+    #roverDashboard {
+      border: 2px solid #0f0;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #111;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-family: monospace;
+      background-color: #111;
+      color: #0f0;
+      border: 2px solid #0f0;
+      box-sizing: border-box;
+      outline: none;
+      animation: blink 1s infinite step-end;
+    }
+    input[type="text"]::placeholder {
+      color: #0f04;
+    }
+    @keyframes blink {
+      0%, 100% { border-color: #0f0; }
+      50% { border-color: transparent; }
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+    table, th, td {
+      border: 1px solid #0f0;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1> NASA Mission Control – COMMS Terminal</h1>
+  <div id="console"></div>
+  <input type="text" id="commandInput" placeholder="" autocomplete="off" />
+  <div id="roverDashboard">
+    <h2>🔍 Rover Dashboard</h2>
+    <p><strong>Landing Site:</strong> <span id="landingSite">Unknown</span></p>
+    <p><strong>Discovery:</strong> <span id="discovery">None</span></p>
+    <p><strong>Analyzing:</strong> <span id="analyzingStatus">No</span></p>
+  </div>
+
+  <div id="chatComms">
+    <h2>📡 COMMS Channel</h2>
+    <div id="commsLog" style="height: 150px; overflow-y: auto; background: #111; padding: 10px; border: 1px solid #0f0;"></div>
+  </div>
+
+  <script>
+    const consoleBox = document.getElementById('console');
+    const commandInput = document.getElementById('commandInput');
+
+    const commandAliases = {
+      "MISSION CONTROL TABLE": "SHOW TEAM STATUS TABLE",
+      "DISPLAY TEAM STATUS": "SHOW TEAM STATUS TABLE",
+      "TEAM GO STATUS": "SHOW TEAM STATUS TABLE"
+    };
+
+    const commands = {
+      "REVIEW CONSOLE SYNTAX": "Displays all commands and descriptions.",
+      "CHECK SYSTEMS": "Randomly determines GO/NO GO for systems.",
+      "CONFIRM LAUNCH STATUS": "Confirms if all systems are GO.",
+      "INITIATE LAUNCH SEQUENCE": "Launches if all systems are GO and mission paid.",
+      "ABORT MISSION": "Aborts the current mission.",
+      "HEAD HOME": "Returns to base.",
+      "RESTART MISSION": "Restarts after NO GO or failure.",
+      "SHOW MISSION LOG": "Displays log of mission events.",
+      "SIMULATE CREW DIALOGUE": "Triggers crew communication.",
+      "PAY FOR MISSION": "Deducts budget for a new mission.",
+      "DEPLOY ROVER": "Deploys rover after successful launch and systems GO.",
+      "CHANGE MALFUNCTION CHANCE [value]": "Sets new malfunction chance between 0 and 1.",
+      "SHOW TEAM STATUS TABLE": "Displays table of all systems and GO/NO GO status.",
+      "SHOW REMAINING BUDGET": "Shows current budget, cost per mission, and total spent.",
+      "PERFORM SCIENCE EXPERIMENT": "Logs a random science experiment result.",
+      "SHOW SYSTEM HISTORY": "Displays GO/NO GO frequency for each team in table.",
+      "SHOW MISSION DATA": "Displays real-time mission data such as velocity, altitude, temperature, radiation.",
+      "SET LANDING SPOT [location]": "Sets the rover landing spot on Mars.",
+      "START ANALYSIS MODULES": "Starts rover analysis modules to scan Mars surface.",
+      "COMMS TO ADMINISTRATOR [message]": "Send a message to NASA administrator."
+    };
+
+    let missionStatus = {
+      fuel: "GO",
+      navigation: "GO",
+      geo: "GO",
+      engineering: "GO",
+      internalCombustion: "GO",
+      power: "GO",
+      propulsion: "GO",
+      environment: "GO",
+      budget: 1000000,
+      missionCost: 250000,
+      missionActive: false,
+      missionPaid: false,
+      malfunctionChance: 0.5,
+      missionLog: [],
+      missionCount: 0,
+      history: {
+        fuel: { GO: 0, NO: 0 },
+        navigation: { GO: 0, NO: 0 },
+        geo: { GO: 0, NO: 0 },
+        engineering: { GO: 0, NO: 0 },
+        internalCombustion: { GO: 0, NO: 0 }
+      },
+      velocity: 0,
+      altitude: 0,
+      temperature: -60,
+      radiation: 0.05,
+      roverLandingSpot: "Unknown",
+      roverDiscovery: null,
+      roverAnalyzing: false,
+      commsToAdminLog: [],
+      commsLog: []
+    };
+
+    const experiments = [
+      "Soil composition analysis complete. Iron oxide detected.",
+      "Atmospheric reading: CO2 levels 95%, pressure stable.",
+      "Radiation levels within expected parameters.",
+      "Seismic scan detected minor marsquakes.",
+      "Micrometeorite impact data logged."
+    ];
+
+    const roverDiscoveries = [
+      "possible water ice detected",
+      "signs of past microbial life",
+      "unusual mineral deposits",
+      "evidence of volcanic activity",
+      "high radiation hotspot",
+      "rich iron oxide deposits",
+      "subsurface ice layers"
+    ];
+
+    function log(text, userCommand = false) {
+      const timestamp = new Date().toLocaleTimeString();
+      const safeText = text.replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      })[m]);
+      const prefix = userCommand ? `$ ${safeText}` : `[${timestamp}] ${safeText}`;
+      missionStatus.missionLog.push(prefix);
+      const div = document.createElement("div");
+      div.innerHTML = prefix;
+      consoleBox.appendChild(div);
+      consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+
+    function allSystemsGo() {
+      const systems = ["fuel", "navigation", "geo", "engineering", "internalCombustion"];
+      const noGoSystems = systems.filter(sys => missionStatus[sys] === "NO GO");
+      return { allGo: noGoSystems.length === 0, noGoSystems };
+    }
+
+    
+    
+   function sendComms(target, message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const formatted = `[${timestamp}] To ${target.toUpperCase()}: ${message}`;
+      missionStatus.commsLog.push(formatted);
+      const div = document.createElement("div");
+      div.textContent = formatted;
+      document.getElementById("commsLog").appendChild(div);
+      const commsLogDiv = document.getElementById("commsLog");
+      commsLogDiv.scrollTop = commsLogDiv.scrollHeight;
+    }
+
+    function showTeamStatusTable() {
+      const teams = ["fuel", "navigation", "geo", "engineering", "internalCombustion"];
+      let html = '<table><tr><th>Team</th><th>Status</th></tr>';
+      teams.forEach(team => {
+        html += `<tr><td>${team}</td><td>${missionStatus[team]}</td></tr>`;
+      });
+      html += '</table>';
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      consoleBox.appendChild(div);
+      consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+
+    function showSystemHistory() {
+  const teams = ["fuel", "navigation", "geo", "engineering", "internalCombustion"];
+  let html = '<table><tr><th>Team</th><th>GO Count</th><th>NO GO Count</th></tr>';
+  teams.forEach(team => {
+    const h = missionStatus.history[team];
+    html += `<tr><td>${team}</td><td>${h.GO}</td><td>${h.NO}</td></tr>`;
+  });
+  html += '</table>';
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  consoleBox.appendChild(div);
+  consoleBox.scrollTop = consoleBox.scrollHeight;
+}
+
+
+function showMissionData() {
+  const data = `
+Velocity: ${missionStatus.velocity} km/h
+Altitude: ${missionStatus.altitude} km
+Temperature: ${missionStatus.temperature} °C
+Radiation Level: ${missionStatus.radiation} Sv
+`;
+log(data);
+}
+
+function updateRoverDashboard() {
+  document.getElementById("landingSite").textContent = missionStatus.roverLandingSpot;
+  document.getElementById("discovery").textContent = missionStatus.roverDiscovery ? missionStatus.roverDiscovery : "None";
+  document.getElementById("analyzingStatus").textContent = missionStatus.roverAnalyzing ? "Yes" : "No";
+}
+
+function processCommand(input) {
+  const rawInput = input.trim().toUpperCase();
+  log(`> ${input}`);  // ← This logs the user’s command to the terminal
+
+
+  // Handle commands with parameters
+  if (rawInput.startsWith("CHANGE MALFUNCTION CHANCE")) {
+    const parts = rawInput.split(" ");
+    const val = parseFloat(parts[3]);
+    if (!isNaN(val) && val >= 0 && val <= 1) {
+      missionStatus.malfunctionChance = val;
+      log(`Malfunction chance set to ${val}`);
+    } else {
+      log("Invalid malfunction chance. Enter a number between 0 and 1.");
+    }
+    return;
+  }
+
+  if (rawInput.startsWith("SET LANDING SPOT")) {
+    const location = input.slice(16).trim();
+    if (location.length > 0) {
+      missionStatus.roverLandingSpot = location;
+      log(`Landing spot set to ${location}`);
+      updateRoverDashboard();
+    } else {
+      log("Please specify a landing spot location.");
+    }
+    return;
+  }
+
+  if (rawInput.startsWith("COMMS TO ADMINISTRATOR")) {
+    const message = input.slice(21).trim();
+    if (message.length > 0) {
+      sendComms("Administrator", message);
+      log(`Message sent to Administrator: ${message}`);
+    } else {
+      log("Please provide a message to send.");
+    }
+    return;
+  }
+
+  // Alias check
+  if (commandAliases[rawInput]) {
+    processCommand(commandAliases[rawInput]);
+    return;
+  }
+
+  switch(rawInput) {
+    case "REVIEW CONSOLE SYNTAX":
+      log("Available commands:");
+      for (const cmd in commands) {
+        log(`- ${cmd}: ${commands[cmd]}`);
+      }
+      break;
+
+    case "CHECK SYSTEMS":
+      ["fuel", "navigation", "geo", "engineering", "internalCombustion"].forEach(team => {
+        const roll = Math.random();
+        if (roll < missionStatus.malfunctionChance) {
+          missionStatus[team] = "NO GO";
+          missionStatus.history[team].NO++;
+        } else {
+          missionStatus[team] = "GO";
+          missionStatus.history[team].GO++;
+        }
+      });
+      const { allGo, noGoSystems } = allSystemsGo();
+      if (allGo) {
+        log("All systems GO.");
+      } else {
+        log(`NO GO for: ${noGoSystems.join(", ")}`);
+      }
+      break;
+
+    case "CONFIRM LAUNCH STATUS":
+      const { allGo: launchGo, noGoSystems: launchNoGo } = allSystemsGo();
+      if (!missionStatus.missionPaid) {
+        log("Mission not paid. Please PAY FOR MISSION first.");
+      } else if (!launchGo) {
+        log(`Launch NO GO. Systems failing: ${launchNoGo.join(", ")}`);
+      } else {
+        log("All systems GO and mission paid. Ready for launch.");
+      }
+      break;
+
+    case "INITIATE LAUNCH SEQUENCE":
+      if (!missionStatus.missionPaid) {
+        log("Cannot launch. Mission not paid.");
+      } else {
+        const { allGo: canLaunch } = allSystemsGo();
+        if (canLaunch) {
+          missionStatus.missionActive = true;
+          missionStatus.missionCount++;
+          missionStatus.velocity = 20000;
+          missionStatus.altitude = 150;
+          missionStatus.temperature = -55;
+          missionStatus.radiation = 0.1;
+          log("Launch sequence initiated. 🚀");
+        } else {
+          log("Launch aborted. Not all systems GO.");
+        }
+      }
+      break;
+
+    case "ABORT MISSION":
+      if (missionStatus.missionActive) {
+        missionStatus.missionActive = false;
+        missionStatus.velocity = 0;
+        missionStatus.altitude = 0;
+        log("Mission aborted. Returning to base.");
+      } else {
+        log("No active mission to abort.");
+      }
+      break;
+
+    case "HEAD HOME":
+      if (missionStatus.missionActive) {
+        missionStatus.missionActive = false;
+        missionStatus.velocity = 10000;
+        missionStatus.altitude = 100;
+        log("Heading home. 🌍");
+      } else {
+        log("No mission active. Already at home.");
+      }
+      break;
+
+    case "RESTART MISSION":
+      missionStatus.missionActive = false;
+      missionStatus.missionPaid = false;
+      missionStatus.velocity = 0;
+      missionStatus.altitude = 0;
+      log("Mission reset. Please PAY FOR MISSION to start a new mission.");
+      break;
+
+    case "SHOW MISSION LOG":
+      if (missionStatus.missionLog.length === 0) {
+        log("No mission log available.");
+      } else {
+        missionStatus.missionLog.forEach(entry => log(entry));
+      }
+      break;
+
+    case "SIMULATE CREW DIALOGUE":
+      log("Crew: All systems nominal. Standing by for commands.");
+      log("Commander: Proceed with pre-launch checks.");
+      break;
+
+    case "PAY FOR MISSION":
+      if (missionStatus.budget >= missionStatus.missionCost) {
+        missionStatus.budget -= missionStatus.missionCost;
+        missionStatus.missionPaid = true;
+        log(`Mission paid. Remaining budget: $${missionStatus.budget.toLocaleString()}`);
+      } else {
+        log("Insufficient budget to pay for mission.");
+      }
+      break;
+
+    case "DEPLOY ROVER":
+      if (!missionStatus.missionActive) {
+        log("Mission not active. Cannot deploy rover.");
+      } else if (!missionStatus.missionPaid) {
+        log("Mission not paid. Cannot deploy rover.");
+      } else {
+        missionStatus.roverDiscovery = roverDiscoveries[Math.floor(Math.random() * roverDiscoveries.length)];
+        missionStatus.roverAnalyzing = true;
+        updateRoverDashboard();
+        log(`Rover deployed. Discovery: ${missionStatus.roverDiscovery}`);
+      }
+      break;
+
+    case "SHOW TEAM STATUS TABLE":
+      showTeamStatusTable();
+      break;
+
+    case "SHOW REMAINING BUDGET":
+      log(`Remaining Budget: $${missionStatus.budget.toLocaleString()}`);
+      log(`Mission Cost per Launch: $${missionStatus.missionCost.toLocaleString()}`);
+      log(`Total Missions Launched: ${missionStatus.missionCount}`);
+      break;
+
+    case "PERFORM SCIENCE EXPERIMENT":
+      const experiment = experiments[Math.floor(Math.random() * experiments.length)];
+      log(`Science experiment result: ${experiment}`);
+      break;
+
+    case "SHOW SYSTEM HISTORY":
+      showSystemHistory();
+      break;
+
+    case "SHOW MISSION DATA":
+      showMissionData();
+      break;
+
+    case "START ANALYSIS MODULES":
+      if (!missionStatus.roverAnalyzing) {
+        missionStatus.roverAnalyzing = true;
+        updateRoverDashboard();
+        log("Rover analysis modules started.");
+      } else {
+        log("Rover analysis modules are already active.");
+      }
+      break;
+
+    default:
+      log(`Unknown command: ${input}`, true);
+      break;
+  }
+}
+
+commandInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const value = commandInput.value;
+    if (value.trim()) {
+      processCommand(value);
+      commandInput.value = "";
+    }
+  }
+});
+
+// Initial welcome message
+log("Welcome to NASA Mission Control COMMS Terminal.");
+commandInput.addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    const input = commandInput.value.trim();
+    if (input === "") return;
+
+    // Log the user command
+    log(input, true);
+
+    // You can also add command processing logic here
+    processCommand(input);  // <-- assuming you have a function to handle commands
+
+    // Clear the input field
+    commandInput.value = "";
+  }
+});
+
+commandInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    const input = commandInput.value.trim();
+    if (input) {
+      // First, check aliases
+      const normalizedInput = input.toUpperCase();
+      const resolvedCommand = commandAliases[normalizedInput] || normalizedInput;
+
+      // Log user input to the console
+      log(input, true);
+
+      // Match and execute command (just log description for now)
+      if (commands[resolvedCommand]) {
+        log(commands[resolvedCommand]);
+        if (resolvedCommand === "SHOW TEAM STATUS TABLE") {
+          showTeamStatusTable();
+        }
+        // Add other command handlers here as needed
+      } else {
+        log("Unrecognized command.");
+      }
+
+      commandInput.value = '';
+    }
+  }
+});
+
+
+</script> </body> </html>
