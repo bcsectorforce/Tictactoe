@@ -172,26 +172,71 @@
       consoleBox.scrollTop = consoleBox.scrollHeight;
     }
 
-    function allSystemsGo() {
-      const systems = ["fuel", "navigation", "geo", "engineering", "internalCombustion"];
-      const noGoSystems = systems.filter(sys => missionStatus[sys] === "NO GO");
-      return { allGo: noGoSystems.length === 0, noGoSystems };
-    }
+    function generateAdminResponse(message) {
+  const msg = message.toLowerCase();
 
-    
+  if (msg.includes("permission") && msg.includes("head home")) {
+    return "Affirmative. You are cleared to return home.";
+  }
+
+  if ((msg.includes("found") || msg.includes("discovered")) && msg.includes("water ice")) {
+    return "Excellent discovery of water ice. This could support future habitation modules.";
+  }
+
+  if (msg.includes("microbial") || msg.includes("life form")) {
+    return "Potential life form detection acknowledged. Proceed with contamination protocols.";
+  }
+
+  if (msg.includes("need help") || msg.includes("assistance") || msg.includes("emergency")) {
+    return "Emergency support module dispatched. Maintain signal stability.";
+  }
+
+  if (msg.includes("status") || msg.includes("report")) {
+    return "Status log received. Cross-referencing with orbital telemetry.";
+  }
+
+  if (msg.includes("volcanic") || msg.includes("lava") || msg.includes("eruption")) {
+    return "Volcanic activity recorded. Adjust mission parameters to avoid instability.";
+  }
+
+  if (msg.includes("radiation spike") || msg.includes("high radiation")) {
+    return "Radiation alert logged. Recommend shielding and retreat to base.";
+  }
+
+  // Default fallback response
+  return "Message received. Standing by for further updates.";
+}
+
+
+  // Default response
+  return "Message received. Standing by for further updates.";
+}
+
     
    function sendComms(target, message) {
-      const timestamp = new Date().toLocaleTimeString();
-      const formatted = `[${timestamp}] To ${target.toUpperCase()}: ${message}`;
-      missionStatus.commsLog.push(formatted);
-      const div = document.createElement("div");
-      div.textContent = formatted;
-      document.getElementById("commsLog").appendChild(div);
-      const commsLogDiv = document.getElementById("commsLog");
-      commsLogDiv.scrollTop = commsLogDiv.scrollHeight;
-    }
+  const timestamp = new Date().toLocaleTimeString();
+  const formatted = `[${timestamp}] To ${target.toUpperCase()}: ${message}`;
+  missionStatus.commsLog.push(formatted);
 
-    function showTeamStatusTable() {
+  const div = document.createElement("div");
+  div.textContent = formatted;
+  document.getElementById("commsLog").appendChild(div);
+
+  // If target is Administrator, generate AI-based response
+  if (target.toLowerCase() === "administrator") {
+    const response = generateAdminResponse(message);
+    const responseFormatted = `[${timestamp}] ADMINISTRATOR to COMMS: ${response}`;
+    missionStatus.commsLog.push(responseFormatted);
+    
+    const responseDiv = document.createElement("div");
+    responseDiv.textContent = responseFormatted;
+    document.getElementById("commsLog").appendChild(responseDiv);
+  }
+
+  const commsLogDiv = document.getElementById("commsLog");
+  commsLogDiv.scrollTop = commsLogDiv.scrollHeight;
+}
+  function showTeamStatusTable() {
       const teams = ["fuel", "navigation", "geo", "engineering", "internalCombustion"];
       let html = '<table><tr><th>Team</th><th>Status</th></tr>';
       teams.forEach(team => {
@@ -203,7 +248,23 @@
       consoleBox.appendChild(div);
       consoleBox.scrollTop = consoleBox.scrollHeight;
     }
+function handleAdminInput(input) {
+  const msg = input.toLowerCase();
 
+  if (msg.includes("water ice")) {
+    return "Confirmed: Subsurface water ice detected. Prioritizing scan of adjacent strata.";
+  } else if (msg.includes("methane")) {
+    return "Trace methane identified. Analyzing source probability—biogenic vs geologic.";
+  } else if (msg.includes("permission to return") || msg.includes("can we go home")) {
+    return "Analyzing mission status... Fuel level: 93%. Risk index: low. Return approved.";
+  } else if (msg.includes("artifact") || msg.includes("structure")) {
+    return "Foreign structure located. Logging coordinates and dispatching drones.";
+  } else {
+    return "Message received. Context unknown. Initiating deeper linguistic parsing...";
+  }
+}
+
+    
     function showSystemHistory() {
   const teams = ["fuel", "navigation", "geo", "engineering", "internalCombustion"];
   let html = '<table><tr><th>Team</th><th>GO Count</th><th>NO GO Count</th></tr>';
