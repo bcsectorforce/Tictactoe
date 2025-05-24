@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stack Tower</title>
+
+<!-- ADDED: favicon, apple-touch-icon, manifest and theme color -->
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#00ff00" />
+
+<style>
+  body {
+    background: #222;
+    color: #0f0;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+  canvas {
+    background: #111;
+    border: 3px solid #0f0;
+    margin-top: 20px;
+  }
+  h1 {
+    margin: 20px 0 0 0;
+  }
+  #score {
+    margin: 10px 0;
+    font-size: 18px;
+  }
+  #instructions {
+    font-size: 14px;
+    margin-top: 5px;
+    color: #555;
+  }
+</style>
+</head>
+<body>
+  <h1>Stack Tower</h1>
+  <div id="score">Height: 0</div>
+  <canvas id="gameCanvas" width="300" height="500"></canvas>
+  <div id="instructions">Click or tap to drop the block</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const towerBaseWidth = 150;
+  const towerBaseHeight = 20;
+  const blockHeight = 20;
+
+  let tower = [{ x: (canvas.width - towerBaseWidth) / 2, width: towerBaseWidth }];
+  let currentY = canvas.height - towerBaseHeight - blockHeight;
+  let blockX = 0;
+  let blockWidth = towerBaseWidth;
+  let direction = 1; // 1 = right, -1 = left
+  let speed = 2;
+  let score = 0;
+  let perfectBonus = 5;
+
+  function drawBlock(x, y, width, color = '#0f0') {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width, blockHeight);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw tower blocks
+    let y = canvas.height - towerBaseHeight;
+    for (let i = 0; i < tower.length; i++) {
+      drawBlock(tower[i].x, y, tower[i].width);
+      y -= blockHeight;
+    }
+
+    // Draw moving block
+    drawBlock(blockX, currentY, blockWidth, '#0f0');
+
+    // Move block horizontally
+    blockX += speed * direction;
+    if (blockX + blockWidth > canvas.width || blockX < 0) {
+      direction *= -1;
+      blockX += speed * direction; // bounce back inside bounds
+    }
+  }
+
+  function dropBlock() {
+    const lastBlock = tower[tower.length - 1];
+    const overlapStart = Math.max(blockX, lastBlock.x);
+    const overlapEnd = Math.min(blockX + blockWidth, lastBlock.x + lastBlock.width);
+    const overlapWidth = overlapEnd - overlapStart;
+
+    if (overlapWidth <= 0) {
+      // No overlap - game over
+      alert('Game Over! Tower collapsed.');
+      resetGame();
+      return;
+    }
+
+    // Check for perfect stack (small margin)
+    if (Math.abs(blockX - lastBlock.x) < 5) {
+      score += perfectBonus;
+      blockX = lastBlock.x; // snap perfectly aligned block
+    } else {
+      score += 1;
+    }
+
+    // Slice off the non-overlapping part
+    blockX = overlapStart;
+    blockWidth = overlapWidth;
+
+    tower.push({ x: blockX, width: blockWidth });
+    currentY -= blockHeight;
+    speed += 0.2; // increase speed each block
+
+    updateScore();
+
+    // Reset moving block to left side
+    blockX = 0;
+    direction = 1;
+  }
+
+  function updateScore() {
+    document.getElementById('score').textContent = `Height: ${tower.length - 1}`;
+  }
+
+  function resetGame() {
+    tower = [{ x: (canvas.width - towerBaseWidth) / 2, width: towerBaseWidth }];
+    currentY = canvas.height - towerBaseHeight - blockHeight;
+    blockWidth = towerBaseWidth;
+    blockX = 0;
+    direction = 1;
+    speed = 2;
+    score = 0;
+    updateScore();
+  }
+
+  canvas.addEventListener('click', dropBlock);
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); dropBlock(); });
+
+  function gameLoop() {
+    draw();
+    requestAnimationFrame(gameLoop);
+  }
+
+  updateScore();
+  gameLoop();
+</script>
+</body>
+</html>
