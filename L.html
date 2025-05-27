@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Laser Bounce - Celebration Edition</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    canvas { display: block; margin: 0 auto; background: #000011; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="500" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const paddle = {
+      x: canvas.width / 2 - 50,
+      y: canvas.height - 30,
+      width: 100,
+      height: 10,
+      speed: 6,
+      dx: 0
+    };
+
+    let ball = {
+      x: canvas.width / 2,
+      y: canvas.height - 50,
+      radius: 8,
+      dx: 4,
+      dy: -4
+    };
+
+    let level = 1;
+    let bricks = [];
+    const brickColumnCount = 8;
+    const brickWidth = 50;
+    const brickHeight = 20;
+    const brickPadding = 10;
+    const brickOffsetLeft = 35;
+
+    let powerUps = [];
+    let activePowerUps = [];
+
+    const musicTracks = [
+      new Audio('level1.mp3'),
+      new Audio('level2.mp3'),
+      new Audio('level3.mp3')
+    ];
+
+    let blocksDestroyed = 0;
+
+    let gameState = 'playing'; // 'playing' or 'celebrating'
+
+    // Fireworks & Confetti arrays
+    const fireworks = [];
+    const confetti = [];
+
+    // --- Firework Particle Constructor ---
+    class FireworkParticle {
+      constructor(x, y, dx, dy, color) {
+        this.x = x;
+        this.y = y;
+        this.dx = dx;
+        this.dy = dy;
+        this.alpha = 1;
+        this.radius = 2 + Math.random() * 2;
+        this.color = color;
+      }
+      update() {
+        this.x += this.dx;
+        this.y += this.dy;
+        this.dy += 0.05; // gravity
+        this.alpha -= 0.02;
+      }
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 8;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        ctx.restore();
+      }
+    }
+
+    // --- Confetti Particle Constructor ---
+    class ConfettiParticle {
+      constructor(x, y, size, color, speed, rotation) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.color = color;
+        this.speed = speed;
+        this.rotation = rotation;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.1;
+      }
+      update() {
+        this.y += this.speed;
+        this.rotation += this.rotationSpeed;
+        if (this.y > canvas.height) this.y = -this.size;
+      }
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size * 0.4);
+        ctx.restore();
+      }
+    }
+
+    function createBricks() {
+      const brickRowCount = 5 + level;
+      const brickOffsetTop = 30 + (5 - level) * 10;
+      bricks = [];
+      for (let r = 0; r < brickRowCount; r++) {
+        bricks[r] = [];
+        for (let c = 0; c < brickColumnCount; c++) {
+          bricks[r][c] = {
+            x: c * (brickWidth + brickPadding) + brickOffsetLeft,
+            y: r * (brickHeight + brickPadding) + brickOffsetTop,
+            status: 1,
+            type: Math.random() < 0.2 ? 'explode' : 'normal'
+          };
+        }
+      }
+    }
+
+    function drawBricks() {
+      bricks.forEach(row => {
+        row.forEach(brick => {
+          if (brick.status === 1) {
+            ctx.fillStyle = brick.type === 'explode' ? 'red' : 'aqua';
+            ctx.fillRect(brick.x, brick.y, brickWidth, brickHeight);
+          }
+        });
+      });
+    }
+
+    function drawPaddle() {
+      ctx.fillStyle = activePowerUps.includes('magnet') ? 'yellow' : 'lime';
+      ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'magenta';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawPowerUps() {
+      powerUps.forEach(pu => {
+        ctx.fillStyle = 'orange';
+        ctx.fillRect(pu.x, pu.y, 20, 20);
+      });
+    }
+
+    function movePaddle() {
+      paddle.x += paddle.dx;
+      if (paddle.x < 0) paddle.x = 0;
+      if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+    }
+
+    function moveBall() {
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) ball.dx *= -1;
+      if (ball.y - ball.radius < 0) ball.dy *= -1;
+
+      if (ball.y + ball.radius > canvas.height) {
+        // Trigger celebration instead of reload
+        gameState = 'celebrating';
+        startCelebration();
+      }
+
+      if (
+        ball.x > paddle.x &&
+        ball.x < paddle.x + paddle.width &&
+        ball.y + ball.radius > paddle.y &&
+        ball.y - ball.radius < paddle.y + paddle.height
+      ) {
+        ball.dy *= -1;
+      }
+
+      let bricksLeft = 0;
+      bricks.forEach(row => {
+        row.forEach(brick => {
+          if (brick.status === 1) {
+            bricksLeft++;
+            if (
+              ball.x > brick.x &&
+              ball.x < brick.x + brickWidth &&
+              ball.y > brick.y &&
+              ball.y < brick.y + brickHeight
+            ) {
+              brick.status = 0;
+              blocksDestroyed++;
+              ball.dy *= -1;
+              if (Math.random() < 0.2) spawnPowerUp(brick.x, brick.y);
+              if (brick.type === 'explode') explodeBricks(brick);
+            }
+          }
+        });
+      });
+
+      if (bricksLeft === 0) {
+        level++;
+        resetBall();
+        createBricks();
+        playMusic(level);
+      }
+    }
+
+    function spawnPowerUp(x, y) {
+      const types = ['magnet', 'multi', 'reverse'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      powerUps.push({ x, y, dy: 2, type });
+    }
+
+    function movePowerUps() {
+      powerUps.forEach((pu, index) => {
+        pu.y += pu.dy;
+        if (
+          pu.x > paddle.x &&
+          pu.x < paddle.x + paddle.width &&
+          pu.y + 20 > paddle.y
+        ) {
+          activatePowerUp(pu.type);
+          powerUps.splice(index, 1);
+        }
+      });
+    }
+
+    function activatePowerUp(type) {
+      activePowerUps.push(type);
+      setTimeout(() => {
+        activePowerUps = activePowerUps.filter(p => p !== type);
+      }, 10000);
+    }
+
+    function explodeBricks(centerBrick) {
+      bricks.forEach(row => {
+        row.forEach(brick => {
+          if (
+            brick.status === 1 &&
+            Math.abs(brick.x - centerBrick.x) <= brickWidth + brickPadding &&
+            Math.abs(brick.y - centerBrick.y) <= brickHeight + brickPadding
+          ) {
+            brick.status = 0;
+            blocksDestroyed++;
+          }
+        });
+      });
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = `rgba(0, 0, ${20 + level * 10}, 0.5)`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Could add stars or grids here for animation
+    }
+
+    // Celebration related functions
+
+    function startCelebration() {
+      fireworks.length = 0;
+      confetti.length = 0;
+      // Create initial fireworks and confetti
+      for (let i = 0; i < 15; i++) {
+        fireworks.push(createFirework());
+      }
+      for (let i = 0; i < 100; i++) {
+        confetti.push(createConfetti());
+      }
+      // After 8 seconds, reset game
+      setTimeout(() => {
+        resetGame();
+      }, 8000);
+    }
+
+    function createFirework() {
+      const x = Math.random() * canvas.width * 0.8 + canvas.width * 0.1;
+      const y = canvas.height + 10;
+      const dx = (Math.random() - 0.5) * 3;
+      const dy = -6 - Math.random() * 3;
+      const color = `hsl(${Math.random() * 360}, 100%, 70%)`;
+      return { x, y, dx, dy, color, exploded: false, particles: [] };
+    }
+
+    function updateFireworks() {
+      fireworks.forEach((fw, i) => {
+        if (!fw.exploded) {
+          fw.x += fw.dx;
+          fw.y += fw.dy;
+          fw.dy += 0.15; // gravity
+
+          if (fw.dy >= 0) {
+            fw.exploded = true;
+            // Create particles for explosion
+            for (let j = 0; j < 30; j++) {
+              const angle = (Math.PI * 2 * j) / 30;
+              const speed = Math.random() * 4 + 1;
+              const dx = Math.cos(angle) * speed;
+              const dy = Math.sin(angle) * speed;
+              fw.particles.push(new FireworkParticle(fw.x, fw.y, dx, dy, fw.color));
+            }
+          }
+        } else {
+          // Update particles
+          fw.particles.forEach((p, idx) => {
+            p.update();
+            if (p.alpha <= 0) {
+              fw.particles.splice(idx, 1);
+            }
+          });
+          // Remove fireworks if no particles left
+          if (fw.particles.length === 0) {
+            fireworks.splice(i, 1);
+            // Add new firework
+            fireworks.push(createFirework());
+          }
+        }
+      });
+    }
+
+    function drawFireworks() {
+      fireworks.forEach(fw => {
+        if (!fw.exploded) {
+          ctx.beginPath();
+          ctx.fillStyle = fw.color;
+          ctx.shadowColor = fw.color;
+          ctx.shadowBlur = 10;
+          ctx.arc(fw.x, fw.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.closePath();
+        } else {
+          fw.particles.forEach(p => p.draw());
+        }
+      });
+    }
+
+    function createConfetti() {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height;
+      const size = 7 + Math.random() * 5;
+      const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+      const speed = 1 + Math.random() * 2;
+      const rotation = Math.random() * Math.PI * 2;
+      return new ConfettiParticle(x, y, size, color, speed, rotation);
+    }
+
+    function updateConfetti() {
+      confetti.forEach(c => c.update());
+    }
+
+    function drawConfetti() {
+      confetti.forEach(c => c.draw());
+    }
+
+    function drawCelebrationText() {
+      ctx.save();
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 4);
+      ctx.fillText(`Blocks Destroyed: ${blocksDestroyed}`, canvas.width / 2, canvas.height / 4 + 50);
+      ctx.restore();
+    }
+
+    // Game reset
+    function resetGame() {
+      blocksDestroyed = 0;
+      level = 1;
+      createBricks();
+      resetBall();
+      gameState = 'playing';
+      activePowerUps = [];
+      powerUps = [];
+      playMusic(level);
+    }
+
+    function resetBall() {
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height - 50;
+      ball.dx = 4;
+      ball.dy = -4;
+      paddle.x = canvas.width / 2 - paddle.width / 2;
+    }
+
+    // Music handling
+    function playMusic(level) {
+      musicTracks.forEach(track => track.pause());
+      if (level - 1 < musicTracks.length) {
+        musicTracks[level - 1].currentTime = 0;
+        musicTracks[level - 1].play();
+      }
+    }
+
+    // Main game loop
+    function update() {
+      if (gameState === 'playing') {
+        movePaddle();
+        moveBall();
+        movePowerUps();
+      } else if (gameState === 'celebrating') {
+        updateFireworks();
+        updateConfetti();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+
+      if (gameState === 'playing') {
+        drawBricks();
+        drawPaddle();
+        drawBall();
+        drawPowerUps();
+      } else if (gameState === 'celebrating') {
+        drawFireworks();
+        drawConfetti();
+        drawCelebrationText();
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Controls
+    document.addEventListener('keydown', e => {
+      if (gameState !== 'playing') return;
+
+      if (activePowerUps.includes('reverse')) {
+        if (e.key === 'ArrowLeft') paddle.dx = paddle.speed;
+        else if (e.key === 'ArrowRight') paddle.dx = -paddle.speed;
+      } else {
+        if (e.key === 'ArrowLeft') paddle.dx = -paddle.speed;
+        else if (e.key === 'ArrowRight') paddle.dx = paddle.speed;
+      }
+    });
+
+    document.addEventListener('keyup', e => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        paddle.dx = 0;
+      }
+    });
+
+    // Initialize game
+    createBricks();
+    resetBall();
+    playMusic(level);
+    loop();
+  </script>
+</body>
+</html>
