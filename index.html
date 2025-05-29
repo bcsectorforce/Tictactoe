@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>BC Terminal</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
   <style>
     body {
       background-color: #0d0d0d;
       color: #00ffcc;
       font-family: 'Courier New', monospace;
-      padding: 40px;
       margin: 0;
       height: 100vh;
       overflow: hidden;
@@ -17,6 +17,14 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      position: relative;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: -1;
     }
 
     .title {
@@ -58,21 +66,21 @@
       100% { transform: skew(0deg); }
     }
   </style>
-<link rel="icon" type="image/png" href="icon-192.png" />
-<link rel="apple-touch-icon" href="icon-180.png" />
 
 </head>
 <body>
+  <canvas id="quantumCanvas"></canvas>
+
   <h1 class="title">Hello, Commander</h1>
   <p id="currentTime"></p>
   <p><a href="tic.html" target="_blank">▶ Launch Tic Tac Toe</a></p>
   <p><a href="chop.html" target="_blank">▶ Launch Chopsticks</a></p>
   <p><a href="block.html" target="_blank">▶ Launch Block Dogers</a></p>
-   <p><a href="Pong.html" target="_blank">▶ Launch Pong</a></p>
+  <p><a href="Pong.html" target="_blank">▶ Launch Pong</a></p>
   <p><a href="trashrocket.html" target="_blank">▶ Launch Trash Rocket</a></p>
   <p><a href="NASA.html" target="_blank">▶ Launch COMMS terminal</a></p>
   <p><a href="S.html" target="_blank">▶ Launch Stack Tower</a></p>
-   <p><a href="L.html" target="_blank">▶ Launch Lasor Bounce</a></p>
+  <p><a href="L.html" target="_blank">▶ Launch Lasor Bounce</a></p>
 
   <script>
     function updateTime() {
@@ -83,5 +91,81 @@
     setInterval(updateTime, 1000);
     updateTime();
   </script>
+
+  <!-- Quantum Vacuum Ripple Canvas -->
+  <script>
+  const canvas = document.getElementById('quantumCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  const particles = [];
+  const numParticles = 150;
+
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      radius: Math.random() * 1.5 + 0.5,
+      speed: Math.random() * 0.6 + 0.2,
+      angle: Math.random() * 2 * Math.PI,
+      color: `hsl(${Math.random() * 30 + 170}, 100%, 60%)` // Aqua-blue range
+    });
+  }
+
+  let rippleRadius = 0;
+  let expanding = true;
+
+  function draw() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw particles with glow
+    for (let p of particles) {
+      p.x += Math.cos(p.angle) * p.speed;
+      p.y += Math.sin(p.angle) * p.speed;
+      p.angle += (Math.random() - 0.5) * 0.1;
+
+      if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+        p.x = Math.random() * canvas.width;
+        p.y = Math.random() * canvas.height;
+      }
+
+      const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius * 4);
+      gradient.addColorStop(0, p.color);
+      gradient.addColorStop(1, "transparent");
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw central psi2 ripple
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, rippleRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0, 255, 204, ${1 - rippleRadius / canvas.width})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    if (expanding) {
+      rippleRadius += 1;
+      if (rippleRadius > canvas.width / 3) expanding = false;
+    } else {
+      rippleRadius -= 1;
+      if (rippleRadius < 30) expanding = true;
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+</script>
+
 </body>
 </html>
