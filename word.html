@@ -241,7 +241,7 @@ function drawGuessRow(word, result) {
       playAgainBtn.style.display = 'inline-block';
       updateStats(row);
       updateStreak(true);
-    } else if (row >= 6) {
+    } else if (row >= 10) {
       message.textContent = `❌ Game over! The word was: ${target.toUpperCase()}`;
       input.disabled = true;
       playAgainBtn.style.display = 'inline-block';
@@ -284,7 +284,7 @@ function triggerConfetti() {
     const distDiv = document.getElementById('distribution');
     distDiv.innerHTML = '';
     const total = Object.values(stats).reduce((a, b) => a + b, 0);
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 10; i++) {
       const count = stats[i] || 0;
       const percent = total ? Math.round((count / total) * 100) : 0;
       const bar = '█'.repeat(Math.floor(percent / 5)) || '░';
@@ -292,7 +292,7 @@ function triggerConfetti() {
       row.textContent = `${i} Guess${i > 1 ? 'es' : ''}: ${bar} (${percent}%)`;
       distDiv.appendChild(row);
     }
-    // Win chance = sum of all successful guesses (1-6) / total games played * 100%
+    // Win chance = sum of all successful guesses (1-10) / total games played * 100%
     const wins = Object.values(stats).reduce((sum, val, i) => sum + val, 0);
     const winPercent = total ? Math.round((wins / total) * 100) : 0;
     document.getElementById('win-chance').textContent =
