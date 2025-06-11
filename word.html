@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>QuantumWordle</title>
+  <style>
+    body {
+      background: #0a0a0a;
+      color: #00ffcc;
+      font-family: monospace;
+      text-align: center;
+      padding: 30px;
+      margin: 0;
+    }
+    #combo-counter {
+      font-size: 18px;
+      color: #00ffcc;
+      background: #111;
+      padding: 10px 0;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 100;
+      font-weight: bold;
+    }
+    h1, h2 {
+      color: #00ffcc;
+      margin-top: 70px; /* push down for fixed top bar */
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(5, 50px);
+      gap: 10px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .tile {
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      background-color: #222;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      border: 1px solid #00ffcc;
+      user-select: none;
+    }
+    .green { background-color: #00ff00; color: #000; }
+    .yellow { background-color: #ffff00; color: #000; }
+    .gray { background-color: #444; color: #888; }
+    input {
+      font-size: 20px;
+      padding: 5px 10px;
+      margin-top: 10px;
+      text-transform: uppercase;
+      width: 120px;
+      letter-spacing: 6px;
+      text-align: center;
+      background: #111;
+      border: 1px solid #00ffcc;
+      color: #00ffcc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      font-weight: bold;
+      background-color: #00ffcc;
+      color: #000;
+      border: none;
+      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      user-select: none;
+    }
+    #message {
+      margin-top: 15px;
+      font-size: 18px;
+      color: #ff66ff;
+      min-height: 24px;
+    }
+    #distribution, #win-chance, #streak {
+      margin-top: 20px;
+      font-size: 16px;
+      white-space: pre-line;
+      user-select: none;
+    }
+@keyframes flip {
+  0%   { transform: rotateX(0); }
+  50%  { transform: rotateX(90deg); }
+  100% { transform: rotateX(0); }
+}
+
+.tile {
+  transition: background-color 0.3s, color 0.3s;
+  animation: flip 0.5s ease-in-out;
+}
+
+.confetti {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: #00ffcc;
+  border-radius: 50%;
+  animation: confettiFall 2s linear forwards;
+  z-index: 999;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+  
+</style>
+</head>
+<body>
+
+  <div id="combo-counter">🔢 Total Unique Combinations Played: 0</div>
+
+  <h1>🧠 QuantumWordle</h1>
+  <p>Guess the unique 5-letter word. Each word is randomly generated and never repeated!</p>
+
+  <div id="board"></div>
+
+  <input type="text" id="guess" maxlength="5" placeholder="TYPE HERE" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+  <br />
+  <button onclick="submitGuess()">Guess</button>
+
+  <div id="message"></div>
+  <button id="play-again" onclick="resetGame()" style="display:none;">🔁 Play Again</button>
+
+  <h2>📊 Guess Distribution</h2>
+  <div id="distribution"></div>
+
+  <h2>🔢 Estimated Win Chance</h2>
+  <div id="win-chance"></div>
+
+  <h2>🔥 Current Streak</h2>
+  <div id="streak"></div>
+
+<script>
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+  const board = document.getElementById('board');
+  const input = document.getElementById('guess');
+  const message = document.getElementById('message');
+  const playAgainBtn = document.getElementById('play-again');
+
+  // Load used words from localStorage or initialize empty
+  let usedWords = JSON.parse(localStorage.getItem('quantumWords') || '[]');
+
+  // Initialize total combos count if missing
+  if (!localStorage.getItem('totalCombinations')) {
+    localStorage.setItem('totalCombinations', usedWords.length.toString());
+  }
+
+  // Current target word and guess count
+  let target = '';
+  let row = 0;
+
+  // Generate a unique 5-letter word never used before
+  function generateUniqueWord() {
+    let word;
+    do {
+      word = '';
+      for (let i = 0; i < 5; i++) {
+        word += alphabet[Math.floor(Math.random() * alphabet.length)];
+      }
+    } while (usedWords.includes(word));
+
+    usedWords.push(word);
+    localStorage.setItem('quantumWords', JSON.stringify(usedWords));
+
+    // Update total combinations count
+    localStorage.setItem('totalCombinations', usedWords.length.toString());
+    updateComboCounter();
+
+    return word;
+  }
+
+  // Update top bar with total combos played
+  function updateComboCounter() {
+    const count = localStorage.getItem('totalCombinations') || '0';
+    document.getElementById('combo-counter').textContent =
+      `🔢 Total Unique Combinations Played: ${count}`;
+  }
+
+  // Draw guess row tiles with colors
+
+function drawGuessRow(word, result) {
+  for (let i = 0; i < 5; i++) {
+    const tile = document.createElement('div');
+    tile.classList.add('tile');
+    tile.textContent = word[i].toUpperCase();
+    setTimeout(() => {
+      if (result[i] === 'green') tile.classList.add('green');
+      else if (result[i] === 'yellow') tile.classList.add('yellow');
+      else tile.classList.add('gray');
+    }, i * 300);
+    board.appendChild(tile);
+  }
+}
+
+  // Submit guess logic
+  function submitGuess() {
+    const guess = input.value.toLowerCase();
+    input.value = '';
+    message.textContent = '';
+
+    if (guess.length !== 5) {
+      message.textContent = 'Word must be 5 letters!';
+      return;
+    }
+
+    // Result array: green, yellow, gray
+    let result = Array(5).fill('gray');
+    let targetLetters = target.split('');
+
+    // First pass: greens
+    for (let i = 0; i < 5; i++) {
+      if (guess[i] === target[i]) {
+        result[i] = 'green';
+        targetLetters[i] = null;
+      }
+    }
+    // Second pass: yellows
+    for (let i = 0; i < 5; i++) {
+      if (result[i] !== 'green' && targetLetters.includes(guess[i])) {
+        result[i] = 'yellow';
+        targetLetters[targetLetters.indexOf(guess[i])] = null;
+      }
+    }
+
+    drawGuessRow(guess, result);
+    row++;
+
+    if (guess === target) { triggerConfetti();
+
+      message.textContent = `🎉 You guessed it in ${row} try${row === 1 ? '' : 'ies'}!`;
+      input.disabled = true;
+      playAgainBtn.style.display = 'inline-block';
+      updateStats(row);
+      updateStreak(true);
+    } else if (row >= 6) {
+      message.textContent = `❌ Game over! The word was: ${target.toUpperCase()}`;
+      input.disabled = true;
+      playAgainBtn.style.display = 'inline-block';
+      updateStreak(false);
+    }
+  }
+
+  // Reset game for new round
+  function resetGame() {
+    target = generateUniqueWord();
+    board.innerHTML = '';
+    input.disabled = false;
+    input.value = '';
+    message.textContent = '';
+    row = 0;
+    playAgainBtn.style.display = 'none';
+  }
+
+function triggerConfetti() {
+  for (let i = 0; i < 100; i++) {
+    const confetti = document.createElement('div');
+    confetti.classList.add('confetti');
+    confetti.style.left = Math.random() * window.innerWidth + 'px';
+    confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+    document.body.appendChild(confetti);
+    setTimeout(() => confetti.remove(), 2000);
+  }
+}
+
+  // Update guess distribution stats
+  function updateStats(guessesTaken) {
+    const stats = JSON.parse(localStorage.getItem('guessStats') || '{}');
+    stats[guessesTaken] = (stats[guessesTaken] || 0) + 1;
+    localStorage.setItem('guessStats', JSON.stringify(stats));
+    renderStats(stats);
+  }
+
+  // Render guess distribution and win chance
+  function renderStats(stats) {
+    const distDiv = document.getElementById('distribution');
+    distDiv.innerHTML = '';
+    const total = Object.values(stats).reduce((a, b) => a + b, 0);
+    for (let i = 1; i <= 6; i++) {
+      const count = stats[i] || 0;
+      const percent = total ? Math.round((count / total) * 100) : 0;
+      const bar = '█'.repeat(Math.floor(percent / 5)) || '░';
+      const row = document.createElement('div');
+      row.textContent = `${i} Guess${i > 1 ? 'es' : ''}: ${bar} (${percent}%)`;
+      distDiv.appendChild(row);
+    }
+    // Win chance = sum of all successful guesses (1-6) / total games played * 100%
+    const wins = Object.values(stats).reduce((sum, val, i) => sum + val, 0);
+    const winPercent = total ? Math.round((wins / total) * 100) : 0;
+    document.getElementById('win-chance').textContent =
+      `Your average win rate: ${winPercent}% over ${total} game${total === 1 ? '' : 's'}.`;
+  }
+
+  // Update streak count and last played day
+  function updateStreak(wonToday) {
+    const streakData = JSON.parse(localStorage.getItem('streakData') || '{}');
+    const today = new Date().toDateString();
+
+    if (streakData.lastDay !== today) {
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      if (streakData.lastDay === yesterday && wonToday) {
+        streakData.count = (streakData.count || 0) + 1;
+      } else if (wonToday) {
+        streakData.count = 1;
+      } else {
+        streakData.count = 0;
+      }
+      streakData.lastDay = today;
+      localStorage.setItem('streakData', JSON.stringify(streakData));
+    }
+
+    renderStreak(streakData.count || 0);
+  }
+
+  // Display streak count
+  function renderStreak(count) {
+    document.getElementById('streak').textContent = `${count} day${count === 1 ? '' : 's'} in a row`;
+  }
+
+  // Initialization
+  function init() {
+    updateComboCounter();
+
+    // Start first game if none active
+    if (!target) {
+      target = generateUniqueWord();
+    }
+    renderStats(JSON.parse(localStorage.getItem('guessStats') || '{}'));
+    const streakStart = JSON.parse(localStorage.getItem('streakData') || '{}');
+    renderStreak(streakStart.count || 0);
+
+    input.disabled = false;
+    playAgainBtn.style.display = 'none';
+  }
+
+  init();
+</script>
+
+</body>
+</html>
