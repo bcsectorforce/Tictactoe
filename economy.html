@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Economy Keeper — Keep Inflation Stable</title>
+  <style>
+    :root{
+      --bg:#0b1020;--panel:#121a33;--accent:#7cd1ff;--ok:#4ade80;--warn:#fbbf24;--bad:#fb7185;--text:#e6eef9;--muted:#9db2ce;--card:#0f172a;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:radial-gradient(1200px 800px at 20% -10%, #12203a 0%, var(--bg) 45%, #060a18 100%);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    h1{margin:0;font-size:clamp(20px,3vw,34px)}
+    .container{max-width:1200px;margin:auto;padding:20px;}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    header .subtitle{color:var(--muted);font-size:14px}
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:16px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.08);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.35);}
+    .panel{padding:16px}
+    .controls .group{margin-bottom:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06)}
+    .controls label{display:flex;justify-content:space-between;align-items:center;font-weight:600}
+    .controls .hint{font-size:12px;color:var(--muted);margin-top:6px}
+    input[type=range]{width:100%}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1}
+    .btn{cursor:pointer;background:linear-gradient(180deg, #1b2b55, #132448);color:#eaf6ff;border:1px solid #334b7a;padding:12px 14px;border-radius:12px;font-weight:700;letter-spacing:.2px;transition:.2s}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(124,209,255,.25)}
+    .btn.secondary{background:linear-gradient(180deg,#283146,#1c2336);border-color:#3a4666;color:#d7e5ff}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .kpi{padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(124,209,255,0.08), rgba(124,209,255,0.04));border:1px solid rgba(124,209,255,0.15)}
+    .kpi h3{margin:0 0 6px 0;font-size:12px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+    .kpi .value{font-size:22px;font-weight:800}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid rgba(255,255,255,0.14);margin-left:8px}
+    .rowline{display:flex;gap:12px}
+    canvas{width:100%;height:180px;background:rgba(0,0,0,0.18);border-radius:12px}
+    .log{max-height:190px;overflow:auto;font-size:13px;line-height:1.4;padding-right:4px}
+    .log p{margin:0 0 8px}
+    .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+    .legend span{display:inline-flex;align-items:center;gap:6px}
+    .legend i{display:inline-block;width:14px;height:3px;background:#fff;border-radius:2px}
+    .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:12px}
+    .tooltip{font-size:12px;color:var(--muted)}
+    .danger{color:var(--bad)} .ok{color:var(--ok)} .warn{color:var(--warn)}
+    .titlechip{font-size:12px;color:#a0c8ff;letter-spacing:.4px;border:1px solid rgba(160,200,255,.3);border-radius:999px;padding:4px 8px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Economy Keeper</h1>
+        <div class="subtitle">Hit the 2% inflation target, keep growth steady, and avoid deflation.</div>
+      </div>
+     <div id="cheatsheet" style="display:none; margin:20px; padding:15px; background:#e8f5e9; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+  <h3>📘 Policy Cheat Sheet</h3>
+  <strong>Raise Inflation 🔺</strong>
+  <ul>
+    <li>Lower Policy Rate</li>
+    <li>Increase Gov. Spending</li>
+    <li>Cut Taxes</li>
+    <li>Quantitative Easing (QE+)</li>
+    <li>Sell Currency (FX–)</li>
+  </ul>
+  <strong>Lower Inflation 🔻</strong>
+  <ul>
+    <li>Raise Policy Rate</li>
+    <li>Decrease Gov. Spending</li>
+    <li>Raise Taxes</li>
+    <li>Quantitative Tightening (QE–)</li>
+    <li>Buy Currency (FX+)</li>
+  </ul>
+</div>
+
+      <div class="titlechip">Quarter <span id="quarter">0</span></div>
+    </header>
+    
+    <div class="grid">
+      <!-- Controls -->
+      <div class="card controls">
+        <div class="panel">
+          <div class="group">
+            <label>Policy Rate: <span><span id="rateOut">2.00</span>%</span></label>
+            <input id="rate" type="range" min="-1" max="8" step="0.05" value="2"/>
+            <div class="hint">Set your central bank interest rate. Higher slows inflation & GDP; too low risks inflation, too high causes recession.</div>
+          </div>
+
+          <div class="row">
+            <div class="group">
+              <label>Gov. Spending: <span><span id="gOut">0.0</span>% of GDP</span></label>
+              <input id="g" type="range" min="-3" max="3" step="0.1" value="0"/>
+              <div class="hint">Fiscal impulse this quarter (±). Positive boosts demand; negative is austerity.</div>
+            </div>
+            <div class="group">
+              <label>Tax Offset: <span><span id="tOut">0.0</span>% of GDP</span></label>
+              <input id="t" type="range" min="-3" max="3" step="0.1" value="0"/>
+              <div class="hint">Cut taxes (−) to stimulate; raise (+) to cool demand or fund spending.</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="group">
+              <label>QE / QT: <span><span id="qeOut">0.0</span>% of GDP</span></label>
+              <input id="qe" type="range" min="-2" max="2" step="0.1" value="0"/>
+              <div class="hint">Quantitative Easing (+) loosens money; Tightening (−) shrinks the balance sheet.</div>
+            </div>
+            <div class="group">
+              <label>FX Intervention: <span><span id="fxOut">0.0</span> bn</span></label>
+              <input id="fx" type="range" min="-20" max="20" step="1" value="0"/>
+              <div class="hint">Buy your currency (+) to strengthen; sell (−) to weaken. Affects import prices & inflation.</div>
+            </div>
+          </div>
+<button id="resetBtn">RESET GAME</button>
+
+          <div class="row">
+            <button class="btn" id="next">Advance Quarter</button>
+            <button class="btn secondary" id="reset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div class="card">
+        <div class="panel">
+          <div class="kpis">
+            <div class="kpi"><h3>Inflation (YoY)</h3><div class="value" id="kpiInfl">2.0%</div></div>
+            <div class="kpi"><h3>GDP Growth</h3><div class="value" id="kpiGDP">2.5%</div></div>
+            <div class="kpi"><h3>Currency Index</h3><div class="value" id="kpiFX">100.0</div></div>
+            <div class="kpi"><h3>Score</h3><div class="value" id="kpiScore">0</div></div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="legend">
+            <span><i style="background:#9ad1ff"></i> Inflation</span>
+            <span><i style="background:#b1f2a4"></i> GDP Growth</span>
+            <span><i style="background:#fde68a"></i> Currency</span>
+          </div>
+
+          <div class="rowline">
+            <canvas id="chart"></canvas>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <div class="card" style="flex:1">
+              <div class="panel">
+                <strong>News & Events</strong>
+                <div class="log" id="log"></div>
+              </div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="panel">
+                <strong>How to Win</strong>
+                <div class="tooltip">
+                  Keep inflation near <b>2%</b> with low volatility, achieve positive <b>GDP growth</b>, and avoid deflation. Your score rises when you hit the target with low standard deviation and a stable currency.
+                  <ul>
+                    <li><b>Policy Rate:</b> cools or heats demand; too high triggers recession/deflation.</li>
+                    <li><b>Spending & Taxes:</b> demand stimulus (spend↑/tax↓) or restraint (spend↓/tax↑).</li>
+                    <li><b>QE/QT:</b> affects financial conditions and the currency.</li>
+                    <li><b>FX Intervention:</b> shifts currency -> import prices -> inflation.</li>
+                  </ul>
+                  Random shocks will hit you. Adapt! Survive 40 quarters with a score ≥ <b>120</b> to win.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Made by James Degenhardt— v1.0</div>
+  </div>
+
+  <script>
+    // ====== Simple Macro Model ======
+    const targetInfl = 2.0;         // %
+    const neutralRate = 2.0;        // % nominal neutral
+    const worldRate = 1.5;          // % exogenous world rate
+    const baseGrowth = 2.0;         // % potential GDP growth
+
+    // State
+    let state = {
+      q: 0,
+      infl: 2.0,
+      gdpGrowth: 2.5,
+      currency: 100.0,
+      outputGap: 0.0,               // % deviation of actual from potential
+      expectedInfl: 2.0,
+      history: [] ,                 // {infl,gdp,curr}
+      shocksSeed: Math.random()*1e6,
+      score: 0,
+    };
+
+    // UI elements
+    const el = (id)=>document.getElementById(id);
+    const rate = el('rate'), g = el('g'), t = el('t'), qe = el('qe'), fx = el('fx');
+    const rateOut = el('rateOut'), gOut = el('gOut'), tOut = el('tOut'), qeOut = el('qeOut'), fxOut = el('fxOut');
+
+    function syncOutputs(){
+      rateOut.textContent = (+rate.value).toFixed(2);
+      gOut.textContent = (+g.value).toFixed(1);
+      tOut.textContent = (+t.value).toFixed(1);
+      qeOut.textContent = (+qe.value).toFixed(1);
+      fxOut.textContent = (+fx.value).toFixed(1);
+    }
+    [rate,g,t,qe,fx].forEach(x=>x.addEventListener('input', syncOutputs));
+    syncOutputs();
+
+    // Pseudo-random from seed for reproducibility across runs until reset
+    let rngA = 1664525, rngC = 1013904223, rngM = 2**32;
+    function seeded(){ state.shocksSeed = (rngA*state.shocksSeed + rngC) % rngM; return state.shocksSeed / rngM; }
+
+    function gaussian(mu=0, sigma=1){
+      // Box-Muller
+      const u1 = Math.max(1e-9, seeded());
+      const u2 = Math.max(1e-9, seeded());
+      const z0 = Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+      return mu + sigma*z0;
+    }
+
+    // Calculate standard deviation helper
+    function stdev(arr){
+      if(arr.length<2) return 0;
+      const m = arr.reduce((a,b)=>a+b,0)/arr.length;
+      const v = arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length;
+      return Math.sqrt(v);
+    }
+
+    // News log
+    const log = el('log');
+    function logMsg(msg){
+      const p = document.createElement('p');
+      p.innerHTML = msg;
+      log.prepend(p);
+    }
+
+    // Chart
+    const chart = el('chart');
+    const ctx = chart.getContext('2d');
+    function drawChart(){
+      const w = chart.clientWidth, h = chart.clientHeight;
+      if(chart.width!==w) chart.width=w; if(chart.height!==h) chart.height=h;
+      ctx.clearRect(0,0,w,h);
+      const n = state.history.length;
+      const maxX = Math.max(20,n);
+      const pad = 24;
+
+      // Axes
+      ctx.globalAlpha=0.4; ctx.strokeStyle='#93c5fd'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(pad, h-pad); ctx.lineTo(w-pad, h-pad); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.stroke();
+      ctx.globalAlpha=1;
+
+      function plot(arr, color){
+        if(arr.length<2) return;
+        const xs = (i)=> pad + (w-2*pad)* (i/(maxX-1));
+        // dynamic y ranges per series
+        const min = Math.min(...arr), max = Math.max(...arr);
+        const range = (max-min)||1;
+        const ys = (v)=> h-pad - (h-2*pad)*((v-min)/range);
+        ctx.strokeStyle = color; ctx.lineWidth=2; ctx.beginPath();
+        arr.forEach((v,i)=>{ const x=xs(i), y=ys(v); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);});
+        ctx.stroke();
+      }
+      plot(state.history.map(d=>d.infl), '#9ad1ff');
+      plot(state.history.map(d=>d.gdp),  '#b1f2a4');
+      plot(state.history.map(d=>d.curr), '#fde68a');
+    }
+
+    function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+
+    function step(){
+      const i = +rate.value;            // policy rate
+      const fiscal = +g.value - +t.value;  // net fiscal impulse (% of GDP)
+      const qeAct = +qe.value;          // % of GDP
+      const fxInt = +fx.value;          // bn
+
+      // Shocks (random events)
+      const demandShock = gaussian(0, 0.6);    // % growth
+      const supplyShock = gaussian(0, 0.5);    // pp on inflation
+      const fxShock = gaussian(0, 0.8);        // index points
+
+      // Event headlines
+      const events = [];
+      if(Math.abs(supplyShock)>0.9) events.push(supplyShock>0?"Energy prices spike":"Productivity surge lowers costs");
+      if(Math.abs(demandShock)>1.0) events.push(demandShock>0?"Consumer boom":"Demand slump");
+      if(Math.abs(fxShock)>1.2) events.push(fxShock>0?"Safe-haven flows strengthen currency":"Capital outflows weaken currency");
+
+      // Simple macro relations
+      const rateGap = (i - neutralRate);
+      const demandImpulse = 0.6*fiscal - 0.35*rateGap + 0.15*qeAct; // pp on growth
+      let gdpGrowth = baseGrowth + demandImpulse + demandShock;      // %
+
+      // Output gap integrates growth relative to potential
+      state.outputGap = clamp(0.7*state.outputGap + 0.3*(gdpGrowth - baseGrowth), -6, 6);
+
+      // Inflation dynamics: expectations + Phillips curve + FX pass-through + supply shocks
+      const fxPass = -0.02 * (fxInt/10); // buying currency reduces import prices
+      let infl = 0.55*state.infl + 0.25*state.expectedInfl + 0.25*state.outputGap - 0.18*rateGap + 0.10*qeAct + supplyShock + fxPass;
+
+      // Currency dynamics: rate differentials, QE, and shock
+      let currency = state.currency + 0.35*(i - worldRate) - 0.25*qeAct + 0.05*fxInt + fxShock;
+      currency = clamp(currency, 70, 130);
+
+      // Expectations adapt slowly toward actual
+      state.expectedInfl = 0.8*state.expectedInfl + 0.2*infl;
+
+      // Clamp sensible ranges
+      infl = clamp(infl, -4, 12);
+      gdpGrowth = clamp(gdpGrowth, -8, 8);
+
+      // Update quarter
+      state.q++;
+      state.infl = infl;
+      state.gdpGrowth = gdpGrowth;
+      state.currency = currency;
+      state.history.push({infl,inflLoss:(infl-targetInfl)**2, gdp:gdpGrowth, curr:currency});
+
+      // Score: target loss, volatility penalty, currency stability bonus/penalty
+      const last20 = state.history.slice(-20);
+      const inflSd = stdev(last20.map(d=>d.infl));
+      const currencySd = stdev(last20.map(d=>d.curr));
+      let quarterScore = 10 - 1.6*((infl-targetInfl)**2) - 0.8*(inflSd) - 0.04*(currencySd);
+      if(infl < 0) quarterScore -= 4; // deflation penalty
+      if(gdpGrowth < 0) quarterScore -= 2; // recession penalty
+      state.score = Math.max(0, Math.round(state.score + quarterScore));
+
+      // Log messages
+      const badge = infl<0?'<span class="badge danger">Deflation risk</span>' : (Math.abs(infl-targetInfl)<0.6?'<span class="badge ok">On target</span>':'');
+      const ev = events.length? ' — <em>'+events.join(' · ')+'</em>' : '';
+      logMsg(`Q${state.q}: Inflation ${infl.toFixed(1)}%, GDP ${gdpGrowth.toFixed(1)}%, FX ${currency.toFixed(1)} ${badge}${ev}`);
+
+      // Win/Lose conditions
+      if(state.q>=40){
+        if(state.score>=120){
+          logMsg('<strong class="ok">Victory:</strong> You navigated 10 years with stable prices and growth!');
+        }else{
+          logMsg('<strong class="danger">Outcome:</strong> You finished 10 years but stability was elusive. Try a gentler hand.');
+        }
+      }
+
+      render();
+    }
+
+    function render(){
+      el('quarter').textContent = state.q;
+      el('kpiInfl').textContent = state.infl.toFixed(1)+"%";
+      el('kpiGDP').textContent = state.gdpGrowth.toFixed(1)+"%";
+      el('kpiFX').textContent = state.currency.toFixed(1);
+      el('kpiScore').textContent = state.score;
+      drawChart();
+    }
+// Secret RESET GAME button toggle
+document.getElementById("resetBtn").addEventListener("click", function(event) {
+  event.preventDefault(); // stops any real reset
+  let sheet = document.getElementById("cheatsheet");
+  sheet.style.display = (sheet.style.display === "none") ? "block" : "none";
+});
+
+    function reset(){
+      state = {q:0, infl:2.0, gdpGrowth:2.5, currency:100.0, outputGap:0.0, expectedInfl:2.0, history:[], shocksSeed:Math.random()*1e6, score:0};
+      log.innerHTML='';
+      render();
+    }
+
+    // Hook up buttons
+    el('next').addEventListener('click', step);
+    el('reset').addEventListener('click', reset);
+
+    // Initial render
+    reset();
+  </script>
+</body>
+</html>
