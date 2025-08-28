@@ -332,12 +332,12 @@
       logMsg(`Q${state.q}: Inflation ${infl.toFixed(1)}%, GDP ${gdpGrowth.toFixed(1)}%, FX ${currency.toFixed(1)} ${badge}${ev}`);
 
       // Win/Lose conditions
-      if(state.q>=40){
+      if(state.q>=160){
         if(state.score>=120){
-          logMsg('<strong class="ok">Victory:</strong> You navigated 10 years with stable prices and growth!');
+          logMsg('<strong class="ok">Victory:</strong> You navigated 40 years with stable prices and growth!');
         }else{
           logMsg('<strong class="danger">Outcome:</strong> You finished 10 years but stability was elusive. Try a gentler hand.');
-        }
+        } evqg
       }
 
       render();
