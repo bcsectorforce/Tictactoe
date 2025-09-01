@@ -161,12 +161,12 @@ function startCodeChallenge() {
 
 function evadeMiniGame() {
   let seq = Math.random().toString(36).substring(2,6).toUpperCase();
-  log(`<span class='code-challenge'>TRACE ALERT! Type ${seq} within 3 seconds to reroute signal.</span>`);
+  log(`<span class='code-challenge'>TRACE ALERT! Type ${seq} within 8 seconds to reroute signal.</span>`);
   codeChallenge = "EVADE-"+seq;
   codeTimer = setTimeout(() => {
     log("❌ Evade failed. Trace continues climbing.");
     codeChallenge = null;
-  }, 3000);
+  }, 8000);
 }
 
 function executeCommand(cmd) {
