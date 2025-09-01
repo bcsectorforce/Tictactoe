@@ -1,308 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Chopsticks Game vs AI</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      text-align: center;
-      background: linear-gradient(to right, #f2f2f2, #e0eafc);
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #333;
-      color: white;
-      padding: 20px;
-      font-size: 28px;
-    }
-    .container {
-      padding: 20px;
-    }
-    .player {
-      margin: 30px auto;
-    }
-    .hands {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      margin-top: 10px;
-    }
-    .hand {
-      padding: 15px 30px;
-      border: 3px solid #555;
-      border-radius: 10px;
-      font-size: 28px;
-      background: #fff;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .hand:hover {
-      background: #d6e4ff;
-    }
-    .hand.disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    #status {
-      font-size: 22px;
-      margin: 20px;
-    }
-    select {
-      margin-top: 10px;
-      padding: 8px;
-      font-size: 16px;
-    }
-    .scoreboard, .leaderboard {
-      margin: 20px auto;
-      max-width: 400px;
-      background: #fff;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    .scoreboard h3, .leaderboard h3 {
-      margin-top: 0;
-    }
-    .theme-selector {
-      margin-top: 10px;
-    }
-    .btn {
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 16px;
-      cursor: pointer;
-      border: none;
-      border-radius: 5px;
-      background-color: #333;
-      color: white;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Ops Simulator 4.0</title>
+<style>
+body {
+  font-family: 'Courier New', monospace;
+  background-color: #000;
+  color: #0f0;
+  margin: 0;
+  padding: 20px;
+}
+#terminal {
+  border: 2px solid #0f0;
+  padding: 10px;
+  height: 500px;
+  overflow-y: auto;
+  background-color: #000;
+}
+input {
+  width: 100%;
+  padding: 10px;
+  background: #000;
+  color: #0f0;
+  border: 2px solid #0f0;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+.stats {
+  margin: 10px 0;
+}
+.code-challenge {
+  color: #ff0;
+}
+</style>
 </head>
 <body>
-  <header>🤖 Chopsticks Game vs AI</header>
-  <div class="container">
-    <div>
-      <label for="difficulty">Difficulty: </label>
-      <select id="difficulty">
-        <option value="easy">Easy</option>
-        <option value="medium">Medium</option>
-        <option value="impossible">Impossible</option>
-      </select>
-      <div class="theme-selector">
-        <label for="theme">Theme: </label>
-        <select id="theme">
-          <option value="default">Default</option>
-          <option value="dark">Dark</option>
-          <option value="neon">Neon</option>
-        </select>
-      </div>
-    </div>
 
-    <div id="status">Your Turn</div>
+<h1>Cyber Ops Simulator 4.0</h1>
 
-    <div class="player" id="player1">
-      <h2>You</h2>
-      <div class="hands">
-        <div class="hand" id="p1l">1</div>
-        <div class="hand" id="p1r">1</div>
-      </div>
-      <button class="btn" onclick="splitHands()">Split Hands</button>
-    </div>
+<div class="stats"></div>
 
-    <div class="player" id="player2">
-      <h2>AI</h2>
-      <div class="hands">
-        <div class="hand" id="p2l">1</div>
-        <div class="hand" id="p2r">1</div>
-      </div>
-    </div>
+<div id="terminal"></div>
+<input type="text" id="commandInput" placeholder="" autofocus />
 
-    <div class="scoreboard">
-      <h3>Scoreboard</h3>
-      <p>Player Wins: <span id="playerWins">0</span></p>
-      <p>AI Wins: <span id="aiWins">0</span></p>
-    </div>
+<script>
+let money = 0;
+let btc = 0;
+let btcPrice = 1000;
+let software = 1;
+let security = 50;
+let trace = 0;
+let terminal = document.getElementById('terminal');
+let input = document.getElementById('commandInput');
+let currentServer = null;
+let mission = null;
+let codeChallenge = null;
+let codeTimer = null;
 
-    <div class="leaderboard">
-      <h3>Leaderboard (Avg. Win Rates)</h3>
-      <p>You: <span id="winRate">0%</span></p>
-      <p>AI: <span id="lossRate">0%</span></p>
-    </div>
+let repHackers = 0, repCorps = 0, repLaw = 0;
+let inventory = [];
+let serverBuffs = {};
 
-    <button class="btn" onclick="manualReset()">Restart Game</button>
-  </div>
+let servers = {
+  server1: {difficulty: 1, reward: [200, 800]},
+  server2: {difficulty: 2, reward: [500, 2000]},
+  server3: {difficulty: 3, reward: [1000, 5000]},
+  gov: {difficulty: 4, reward: [2000, 7000]},
+  bank: {difficulty: 4, reward: [3000, 9000]},
+  megacorp: {difficulty: 5, reward: [5000, 15000]},
+  military: {difficulty: 6, reward: [10000, 30000]}
+};
 
-  <script>
-    const hands = {
-      p1l: 1,
-      p1r: 1,
-      p2l: 1,
-      p2r: 1,
-    };
+function updateStats() {
+  document.querySelector('.stats').innerHTML = 
+    `Money: $${money} | BTC: ${btc} | BTC Price: $${btcPrice} | Software: ${software} | Security: ${security}% | Trace: ${trace}% | Rep(Hackers): ${repHackers} | Rep(Corps): ${repCorps} | Rep(Law): ${repLaw}`;
+}
 
-    let currentPlayer = 1;
-    let selectedHand = null;
-    let playerWins = parseInt(localStorage.getItem('playerWins')) || 0;
-    let aiWins = parseInt(localStorage.getItem('aiWins')) || 0;
-    let totalGames = parseInt(localStorage.getItem('totalGames')) || 0;
+function log(text) {
+  terminal.innerHTML += `<p>> ${text}</p>`;
+  terminal.scrollTop = terminal.scrollHeight;
+}
 
-    const status = document.getElementById('status');
-    const difficultySelect = document.getElementById('difficulty');
-    const playerWinDisplay = document.getElementById('playerWins');
-    const aiWinDisplay = document.getElementById('aiWins');
-    const winRateDisplay = document.getElementById('winRate');
-    const lossRateDisplay = document.getElementById('lossRate');
-    const themeSelect = document.getElementById('theme');
+function checkCaught() {
+  if(trace >= 100) {
+    log("TRACE LEVEL MAX! You got caught! GAME OVER.");
+    input.disabled = true;
+    return true;
+  }
+  if(repLaw >= 100) {
+    log("🚨 You are now the MOST WANTED hacker in the world! YOU WIN.");
+    input.disabled = true;
+    return true;
+  }
+  return false;
+}
 
-    themeSelect.addEventListener('change', () => {
-      const theme = themeSelect.value;
-      if (theme === 'dark') {
-        document.body.style.background = '#121212';
-        document.body.style.color = '#eee';
-      } else if (theme === 'neon') {
-        document.body.style.background = '#000';
-        document.body.style.color = '#39ff14';
+function randomEvent() {
+  let roll = Math.random();
+  if(roll < 0.05) {
+    let loss = Math.floor(Math.random()*300+100);
+    money = Math.max(0, money - loss);
+    log(`⚠ MALWARE ATTACK! You lost $${loss}`);
+    security -= 5;
+    trace += 10;
+    repLaw += 1;
+  } else if(roll < 0.08) {
+    trace += 15;
+    log("⚠ Police surveillance increased! Trace rising faster.");
+    repLaw -= 2;
+  } else if(roll < 0.10) {
+    btc += 1;
+    log("✅ Anonymous group donated 1 BTC to you.");
+    repHackers += 2;
+  } else if(roll < 0.12) {
+    log("🤫 Insider leaked a backdoor for server3. Success chance doubled for 3 turns.");
+    serverBuffs["server3"] = 3;
+    repCorps -= 3;
+  }
+}
+
+function startMission() {
+  let missions = [
+    "Steal confidential data from server2",
+    "Destroy malware hidden in server3",
+    "Infiltrate corporation database on server1",
+    "Hack government server (gov) for classified files",
+    "Drain funds from international bank server (bank)",
+    "Steal blueprints from MegaCorp",
+    "Infiltrate military server for weapons data"
+  ];
+  mission = missions[Math.floor(Math.random()*missions.length)];
+  log("New Mission: " + mission);
+}
+
+function completeMission() {
+  if(!mission) return;
+  log("🎯 Mission complete! Rewards granted.");
+  money += 2000;
+  btc += 1;
+  security += 5;
+  repHackers += 3;
+  repCorps -= 3;
+  repLaw += 1;
+  mission = null;
+}
+
+function startCodeChallenge() {
+  let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  codeChallenge = "";
+  for(let i=0; i<4; i++) codeChallenge += chars[Math.floor(Math.random()*chars.length)];
+  log(`<span class='code-challenge'>Password crack required! Type: ${codeChallenge} within 10 seconds.</span>`);
+  codeTimer = setTimeout(() => {
+    log("❌ Failed to enter code in time! Trace increased.");
+    trace += 20;
+    codeChallenge = null;
+  }, 10000);
+}
+
+function evadeMiniGame() {
+  let seq = Math.random().toString(36).substring(2,6).toUpperCase();
+  log(`<span class='code-challenge'>TRACE ALERT! Type ${seq} within 3 seconds to reroute signal.</span>`);
+  codeChallenge = "EVADE-"+seq;
+  codeTimer = setTimeout(() => {
+    log("❌ Evade failed. Trace continues climbing.");
+    codeChallenge = null;
+  }, 3000);
+}
+
+function executeCommand(cmd) {
+  if(checkCaught()) return;
+
+  let parts = cmd.trim().split(" ");
+  let action = parts[0].toLowerCase();
+  let target = parts.slice(1).join(" ").toLowerCase();
+
+  // Evade / code mini-game
+  if(codeChallenge) {
+    if(codeChallenge.startsWith("EVADE-")) {
+      let seq = codeChallenge.split("-")[1];
+      if(cmd.trim().toUpperCase() === seq) {
+        clearTimeout(codeTimer);
+        log("✅ Evade successful! Trace reduced by 20%");
+        trace = Math.max(0, trace-20);
       } else {
-        document.body.style.background = 'linear-gradient(to right, #f2f2f2, #e0eafc)';
-        document.body.style.color = 'black';
+        log("❌ Wrong sequence. Trace penalty.");
+        trace += 10;
       }
-    });
-
-    function updateUI() {
-      for (const hand in hands) {
-        const el = document.getElementById(hand);
-        el.textContent = hands[hand];
-        el.classList.toggle('disabled', hands[hand] === 0);
-      }
-      playerWinDisplay.textContent = playerWins;
-      aiWinDisplay.textContent = aiWins;
-      winRateDisplay.textContent = totalGames ? ((playerWins / totalGames) * 100).toFixed(1) + '%' : '0%';
-      lossRateDisplay.textContent = totalGames ? ((aiWins / totalGames) * 100).toFixed(1) + '%' : '0%';
-    }
-
-    function resetGame(winner) {
-      totalGames++;
-      if (winner === 'player') {
-        playerWins++;
-        alert('You Win!');
+      codeChallenge = null;
+      updateStats();
+      return;
+    } else {
+      if(cmd.trim().toUpperCase() === codeChallenge) {
+        clearTimeout(codeTimer);
+        log("✅ Code cracked successfully! Hack succeeded.");
+        let gain = Math.floor(Math.random()*3000 + 1000);
+        money += gain;
+        log(`You gained $${gain}`);
       } else {
-        aiWins++;
-        alert('AI Wins!');
+        log("❌ Wrong code! Trace increased heavily.");
+        trace += 30;
       }
-      localStorage.setItem('playerWins', playerWins);
-      localStorage.setItem('aiWins', aiWins);
-      localStorage.setItem('totalGames', totalGames);
-      manualReset();
+      codeChallenge = null;
+      updateStats();
+      return;
     }
+  }
 
-    function manualReset() {
-      hands.p1l = hands.p1r = hands.p2l = hands.p2r = 1;
-      currentPlayer = 1;
-      selectedHand = null;
-      updateUI();
-      status.textContent = "Your Turn";
-    }
-
-    function switchTurn() {
-      currentPlayer = currentPlayer === 1 ? 2 : 1;
-      selectedHand = null;
-      status.textContent = currentPlayer === 1 ? "Your Turn" : "AI's Turn";
-      if (currentPlayer === 2) setTimeout(aiMove, 800);
-    }
-
-    function checkWin() {
-      if (hands.p1l === 0 && hands.p1r === 0) {
-        resetGame('ai');
-      } else if (hands.p2l === 0 && hands.p2r === 0) {
-        resetGame('player');
+  switch(action) {
+    case "help":
+      log("Commands: scan, connect [server], hack, upgrade software/security, status, buy [item], sell [item], use [item], mission, darknet, blackmarket, evade, help");
+      break;
+    case "scan":
+      log("Scanning network... Found servers: server1 (easy), server2 (medium), server3 (hard), gov, bank, megacorp, military");
+      trace += 5;
+      break;
+    case "connect":
+      if(target && servers[target]) {
+        currentServer = target;
+        log(`Connected to ${target}. Difficulty: ${servers[target].difficulty}`);
+        trace += 5;
+      } else {
+        log("Specify a valid server. Usage: connect server1");
       }
-    }
-
-    function applyHit(from, to) {
-      let result = hands[to] + hands[from];
-      hands[to] = result === 5 ? 0 : result % 5;
-      updateUI();
-      checkWin();
-      switchTurn();
-    }
-
-    function validHands(playerPrefix) {
-      return Object.keys(hands).filter(h => h.startsWith(playerPrefix) && hands[h] > 0);
-    }
-
-    function aiMove() {
-      const diff = difficultySelect.value;
-      const myHands = validHands('p2');
-      const oppHands = validHands('p1');
-      let move = null;
-
-      if (diff === 'easy') {
-        move = {
-          from: myHands[Math.floor(Math.random() * myHands.length)],
-          to: oppHands[Math.floor(Math.random() * oppHands.length)],
-        };
-      } else if (diff === 'medium') {
-        if (Math.random() < 0.3) {
-          move = bestAIMove();
+      break;
+    case "hack":
+      if(!currentServer) {
+        log("Not connected to a server. Use 'connect [server]'");
+        break;
+      }
+      let s = servers[currentServer];
+      let buff = serverBuffs[currentServer] ? 2.0 : 1.0;
+      if(serverBuffs[currentServer]) {
+        serverBuffs[currentServer]--;
+        if(serverBuffs[currentServer]<=0) delete serverBuffs[currentServer];
+      }
+      let chance = (0.75 + 0.25*software - 0.1*s.difficulty) * buff;
+      if(inventory.includes("zero-day")) {
+        chance = 1.0; // guaranteed success
+        inventory.splice(inventory.indexOf("zero-day"), 1);
+        log("⚡ Used Zero-Day Exploit! Guaranteed success.");
+      }
+      if(chance > Math.random()) {
+        if(s.difficulty >= 3 && Math.random() < 0.5) {
+          startCodeChallenge(); // mini-game
         } else {
-          move = {
-            from: myHands[Math.floor(Math.random() * myHands.length)],
-            to: oppHands[Math.floor(Math.random() * oppHands.length)],
-          };
+          let gain = Math.floor(Math.random()*(s.reward[1]-s.reward[0]) + s.reward[0]);
+          money += gain;
+          log(`Hack successful! Gained $${gain}`);
+          if(mission && mission.includes(currentServer)) completeMission();
         }
+        repHackers += 1; repCorps -= 1;
       } else {
-        move = bestAIMove();
+        trace += 15;
+        log("Hack failed! Trace increased by 15%");
+        repLaw += 1;
       }
-
-      if (move) applyHit(move.from, move.to);
-    }
-
-    function bestAIMove() {
-      const myHands = validHands('p2');
-      const oppHands = validHands('p1');
-
-      for (let from of myHands) {
-        for (let to of oppHands) {
-          const total = hands[from] + hands[to];
-          if (total === 5) return { from, to };
-        }
-      }
-
-      return { from: myHands[0], to: oppHands[0] };
-    }
-
-    function splitHands() {
-      if (currentPlayer !== 1) return;
-      const total = hands.p1l + hands.p1r;
-      if (total > 1 && total < 10 && (hands.p1l === 0 || hands.p1r === 0 || hands.p1l !== hands.p1r)) {
-        hands.p1l = Math.floor(total / 2);
-        hands.p1r = total - hands.p1l;
-        updateUI();
-        switchTurn();
+      break;
+    case "upgrade":
+      if(target === "software" && money >= 500) {
+        software++;
+        money -= 500;
+        log("Software upgraded to level " + software);
+      } else if(target === "security" && money >= 500) {
+        security += 10;
+        money -= 500;
+        log("Security upgraded! +" + 10 + "%");
       } else {
-        alert("Cannot split hands now. Must have at least 2 total and a difference or zero hand.");
+        log("Not enough money or invalid. Use 'upgrade software' or 'upgrade security'");
       }
-    }
+      break;
+    case "status":
+      log(`Money: $${money}, BTC: ${btc}, Software: ${software}, Security: ${security}%, Trace: ${trace}%, Rep(Hackers): ${repHackers}, Rep(Corps): ${repCorps}, Rep(Law): ${repLaw}`);
+      log(`Inventory: ${inventory.length > 0 ? inventory.join(", ") : "Empty"}`);
+      break;
+    case "buy":
+      if(target === "btc" && money >= btcPrice) {
+        money -= btcPrice;
+        btc++;
+        log("Bought 1 BTC for $" + btcPrice);
+      } else if(target === "malware" && money >= 500) {
+        money -= 500;
+        inventory.push("malware");
+        log("🦠 Bought a Malware Kit (+hack power on next attempt).");
+      } else if(target === "vpn" && money >= 300) {
+        money -= 300;
+        inventory.push("vpn");
+        log("🔐 Bought a VPN upgrade (reduces trace gain on next hack).");
+      } else if(target === "ransomware" && money >= 1000) {
+        money -= 1000;
+        inventory.push("ransomware");
+        log("💀 Bought Ransomware (big one-time payout item).");
+      } else if(target === "zero-day" && money >= 1500) {
+        money -= 1500;
+        inventory.push("zero-day");
+        log("⚡ Bought Zero-Day Exploit (+100% hack success, one use).");
+      } else if(target === "rootkit" && money >= 3000) {
+        money -= 3000;
+        inventory.push("rootkit");
+        log("👾 Bought Rootkit (stealthier hacks, -10 trace per use).");
+      } else {
+        log("Not enough money or invalid item.");
+      }
+      break;
+    case "sell":
+      if(target === "btc" && btc > 0) {
+        btc--;
+        money += btcPrice;
+        log("Sold 1 BTC for $" + btcPrice);
+      } else if(target === "data" && inventory.includes("data")) {
+        inventory.splice(inventory.indexOf("data"), 1);
+        money += 1000;
+        log("📂 Sold stolen data for $1000.");
+      } else {
+        log("No such item to sell.");
+      }
+      break;
+    case "use":
+      if(target === "malware" && inventory.includes("malware")) {
+        inventory.splice(inventory.indexOf("malware"), 1);
+        software += 1;
+        log("🦠 Used Malware Kit. Temporary boost: Software +1.");
+      } else if(target === "vpn" && inventory.includes("vpn")) {
+        inventory.splice(inventory.indexOf("vpn"), 1);
+        trace = Math.max(0, trace - 10);
+        log("🔐 VPN activated. Trace reduced by 10%.");
+      } else if(target === "ransomware" && inventory.includes("ransomware")) {
+        inventory.splice(inventory.indexOf("ransomware"), 1);
+        let gain = 5000;
+        money += gain;
+        trace += 25;
+        log("💀 Deployed Ransomware. Gained $" + gain + ", but trace +25%.");
+        repLaw += 5;
+      } else if(target === "rootkit" && inventory.includes("rootkit")) {
+        inventory.splice(inventory.indexOf("rootkit"), 1);
+        trace = Math.max(0, trace - 20);
+        log("👾 Rootkit deployed. Trace reduced by 20%.");
+      } else {
+        log("You don't have that item or it can't be used.");
+      }
+      break;
+    case "mission":
+      if(!mission) startMission();
+      else log("Current Mission: " + mission);
+      break;
+    case "darknet":
+      log("🕶 Darknet Shop: sell data, buy malware kits, vpn upgrades.");
+      log("Commands: buy malware (500$), buy vpn (300$), sell data (1000$).");
+      break;
+    case "blackmarket":
+      log("💀 Black Market: ransomware(1000$), zero-day(1500$), rootkit(3000$).");
+      break;
+    case "evade":
+      if(trace >= 70) {
+        evadeMiniGame();
+      } else {
+        log("Evade not necessary yet. Trace below 70%.");
+      }
+      break;
+    default:
+      log("Unknown command. Type 'help' for commands.");
+  }
 
-    document.querySelectorAll('.hand').forEach(hand => {
-      hand.addEventListener('click', () => {
-        const id = hand.id;
-        if (currentPlayer !== 1 || hands[id] === 0) return;
+  btcPrice = Math.max(100, btcPrice + Math.floor(Math.random()*200 - 100));
+  randomEvent();
+  updateStats();
+}
 
-        const isOwn = id.startsWith('p1');
+input.addEventListener("keydown", function(e) {
+  if(e.key === "Enter") {
+    executeCommand(input.value);
+    input.value = "";
+  }
+});
 
-        if (isOwn && !selectedHand) {
-          selectedHand = id;
-          status.textContent = `Selected ${id.toUpperCase()}. Now tap AI's hand.`;
-        } else if (!isOwn && selectedHand) {
-          applyHit(selectedHand, id);
-        }
-      });
-    });
+log("Welcome, hacker. Type 'help' to see commands.");
+updateStats();
+</script>
 
-    updateUI();
-  </script>
 </body>
 </html>
