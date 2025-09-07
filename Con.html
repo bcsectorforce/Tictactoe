@@ -1,1 +1,1065 @@
-s
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Connections — NYT-style Clone</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#0f1724; --accent:#ffb86b; --muted:#9aa4b2; --tile:#16202b; --correct:#16a34a; --wrong:#ef4444; --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;color:#e6eef6;background:linear-gradient(180deg,#061018 0%,var(--bg) 100%);-webkit-font-smoothing:antialiased}
+
+    .app{max-width:980px;margin:32px auto;padding:28px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 10px 30px rgba(2,6,23,0.6);}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .branding{display:flex;align-items:center;gap:14px}
+    .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#ff7a7a);display:flex;align-items:center;justify-content:center;color:#071126;font-weight:800;font-size:18px;box-shadow:0 6px 18px rgba(255,184,107,0.12);}
+    h1{font-size:20px;margin:0}
+    .meta{color:var(--muted);font-size:13px}
+
+    .controls{display:flex;gap:10px;align-items:center}
+    button{background:var(--glass);border:1px solid rgba(255,255,255,0.03);color:#dbeaf8;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);}
+
+    .board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+    .tile{background:linear-gradient(180deg,var(--tile),#0e1620);padding:18px;border-radius:10px;text-align:center;min-height:86px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#d7eefc;cursor:pointer;user-select:none;transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;box-shadow: 0 6px 16px rgba(4,12,20,0.6);}
+    .tile:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(3,10,18,0.6)}
+
+    .tile.selected{outline:3px solid rgba(255,184,107,0.12);box-shadow:0 10px 30px rgba(255,184,107,0.06);}
+    .tile.correct{background:linear-gradient(180deg,var(--correct),#059669);color:white;transform:scale(1.02)}
+    .tile.wrong{background:linear-gradient(180deg,var(--wrong),#f97316);color:white;transform:scale(.98);opacity:.9}
+
+    .sidebar{display:flex;justify-content:space-between;align-items:center;margin-top:18px}
+    .info{color:var(--muted);font-size:13px}
+    .streak{background:linear-gradient(90deg,#0b1220,#0b1a2a);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;gap:10px}
+    .streak b{color:var(--accent)}
+
+    .status{margin-top:16px;color:var(--muted);font-size:13px}
+
+    .footer{margin-top:18px;display:flex;gap:8px;align-items:center}
+
+    @media (max-width:700px){.app{margin:14px;padding:18px}.tile{min-height:72px;padding:12px;font-size:14px}}
+
+    .glow{animation:glow 1.6s ease-in-out infinite}
+    @keyframes glow{0%{box-shadow:0 6px 20px rgba(255,184,107,0.06)}50%{box-shadow:0 24px 64px rgba(255,184,107,0.08)}100%{box-shadow:0 6px 20px rgba(255,184,107,0.06)}}
+
+  /* Add perspective to tiles */
+.tile {
+  perspective: 600px;
+  cursor: pointer;
+}
+
+/* Flip animation for a single tile */
+.tile.flip {
+  animation: flip 0.6s forwards;
+}
+
+@keyframes flip {
+  0% { transform: rotateX(0deg); background-color: #ccc; color: #000; }
+  50% { transform: rotateX(90deg); background-color: #ccc; color: #000; }
+  100% { transform: rotateX(0deg); background-color: #6aaa64; color: #fff; }
+}
+
+/* Super flip when the whole word is correct */
+.word.correct .tile {
+  animation: superFlip 1s forwards;
+}
+
+@keyframes superFlip {
+  0% { transform: rotateY(0deg); background-color: #ccc; color: #000; }
+  25% { transform: rotateY(180deg); background-color: #ffeb3b; color: #000; }
+  50% { transform: rotateY(360deg); background-color: #4caf50; color: #fff; }
+  75% { transform: rotateY(540deg); background-color: #4caf50; color: #fff; }
+  100% { transform: rotateY(720deg); background-color: #4caf50; color: #fff; }
+}
+
+ .tile.correct {
+  box-shadow: 0 0 20px #16a34a, 0 0 40px #16a34a;
+  animation: correctGlow 1s ease-in-out infinite alternate;
+}
+
+@keyframes correctGlow {
+  0% { box-shadow: 0 0 10px #16a34a; }
+  100% { box-shadow: 0 0 30px #16a34a; }
+}
+ .tile.correct {
+  animation: fadeOut 0.8s forwards;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+
+#confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none; /* so clicks pass through */
+  overflow: hidden;
+  perspective: 800px; /* gives 3D depth */
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: red; /* will randomize in JS */
+  opacity: 0.9;
+  transform-style: preserve-3d;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4); /* shadow for depth */
+  border-radius: 2px;
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  0% {
+    transform: translate3d(0, -20px, 0) rotateX(0deg) rotateY(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--x), 100vh, var(--z)) rotateX(720deg) rotateY(720deg);
+    opacity: 0;
+  }
+}
+  
+  body {
+  perspective: 1000px; /* 3D depth */
+  overflow: hidden;
+  background: #111; /* Dark background makes glitter pop */
+}
+
+.glitter-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.glitter {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #fff 0%, #f0f 50%, transparent 80%);
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  box-shadow: 0 0 10px #fff, 0 0 20px #f0f, 0 0 30px #0ff;
+  opacity: 0.9;
+}
+
+  /* Screen container that will shake */
+#game-container {
+  perspective: 1000px; /* for 3D effect */
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+.shake {
+  animation: shake 0.6s ease-in-out;
+}
+
+@keyframes shake {
+  0% { transform: translate(0px, 0px) rotate(0deg); }
+  10% { transform: translate(-5px, 5px) rotate(-2deg); }
+  20% { transform: translate(5px, -5px) rotate(2deg); }
+  30% { transform: translate(-5px, 5px) rotate(-1deg); }
+  40% { transform: translate(5px, -5px) rotate(1deg); }
+  50% { transform: translate(-3px, 3px) rotate(-1deg); }
+  60% { transform: translate(3px, -3px) rotate(1deg); }
+  70% { transform: translate(-2px, 2px) rotate(0deg); }
+  80% { transform: translate(2px, -2px) rotate(1deg); }
+  90% { transform: translate(-1px, 1px) rotate(0deg); }
+  100% { transform: translate(0px, 0px) rotate(0deg); }
+}
+
+  </style>
+</head>
+<body>
+  
+  <div id="confetti-container"></div>
+
+  <div class="glitter-container"></div>
+
+<audio id="shake-sound" src="shake.mp3" preload="auto"></audio>
+
+  
+  <div class="app">
+    <header>
+      <div class="branding">
+        <div class="logo">C</div>
+        <div>
+          <h1> Quantum Connections</h1>
+          <div class="meta">Find 4 groups of 4 related words. Made by the BC</div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="streak">🔥 Streak <b id="streakCount">0</b></div>
+        <button id="newBtn">New Game</button>
+        <button id="shuffleBtn" class="ghost">Shuffle</button>
+      </div>
+    </header>
+
+    <div class="board" id="board" aria-live="polite"></div>
+
+    <div class="sidebar">
+      <div class="info">Guesses: <span id="guesses">0</span> • Found: <span id="found">0</span>/4</div>
+      <div class="info">Category Mode: <span id="mode">Pick 4</span></div>
+    </div>
+
+    <div class="status" id="status">Select words that you think form a category. When you pick 4, they will be checked.</div>
+
+    <div class="footer">
+      <div style="color:var(--muted);font-size:13px">Tip: click words or use keyboard (1–9 / Q–P) to pick quickly.</div>
+    </div>
+  </div>
+
+  <script>
+  // Large category pool (~200 words, 50 categories)
+  const CATEGORY_POOL = {
+  physics: ["MASS", "ENERGY", "FORCE", "POWER"],
+  chemistry: ["ATOM", "MOLECULE", "REACTION", "BOND"],
+  biology: ["CELL", "DNA", "ENZYME", "TISSUE"],
+  astronomy: ["PLANET", "STAR", "GALAXY", "NEBULA"],
+  math: ["SUM", "ANGLE", "PI", "RATIO"],
+  geology: ["ROCK", "MINERAL", "FAULT", "FOSSIL"],
+  music: ["NOTE", "SCALE", "RHYTHM", "CHORD"],
+  art: ["PAINT", "CANVAS", "BRUSH", "SCULPTURE"],
+  literature: ["NOVEL", "POEM", "STORY", "DRAMA"],
+  history: ["WAR", "EMPIRE", "REVOLT", "TREATY"],
+  computing: ["ALGORITHM", "CODE", "BYTE", "SERVER"],
+  internet: ["BROWSER", "SEARCH", "EMAIL", "STREAM"],
+  sports: ["BALL", "GOAL", "TEAM", "COACH"],
+  olympics: ["TORCH", "MEDAL", "RACE", "GYMNAST"],
+  weather: ["RAIN", "WIND", "STORM", "CLOUD"],
+  climate: ["WARMING", "CARBON", "ICE", "SEA"],
+  language: ["WORD", "VERB", "NOUN", "SYNTAX"],
+  education: ["SCHOOL", "BOOK", "TEST", "TEACH"],
+  medicine: ["VIRUS", "CURE", "DRUG", "SURGERY"],
+  health: ["DIET", "SLEEP", "EXERCISE", "STRESS"],
+  psychology: ["MIND", "DREAM", "MEMORY", "EMOTION"],
+  philosophy: ["LOGIC", "ETHICS", "IDEA", "SOUL"],
+  religion: ["TEMPLE", "PRAYER", "FAITH", "RITUAL"],
+  food: ["BREAD", "RICE", "SOUP", "SALAD"],
+  drinks: ["WATER", "TEA", "COFFEE", "JUICE"],
+  fruit: ["APPLE", "BANANA", "GRAPE", "ORANGE"],
+  vegetable: ["CARROT", "POTATO", "ONION", "PEA"],
+  animals: ["DOG", "CAT", "HORSE", "FISH"],
+  birds: ["EAGLE", "SPARROW", "PENGUIN", "PARROT"],
+  insects: ["BEE", "ANT", "FLY", "MOTH"],
+  reptiles: ["SNAKE", "LIZARD", "TURTLE", "CROCODILE"],
+  amphibians: ["FROG", "NEWT", "TOAD", "SALAMANDER"],
+  mammals: ["LION", "WHALE", "BAT", "ELEPHANT"],
+  transport: ["CAR", "BOAT", "PLANE", "TRAIN"],
+  spaceflight: ["ROCKET", "BOOSTER", "ORBIT", "MODULE"],
+  navigation: ["MAP", "GPS", "COMPASS", "RADAR"],
+  colors: ["RED", "BLUE", "GREEN", "YELLOW"],
+  shapes: ["CIRCLE", "SQUARE", "TRIANGLE", "OVAL"],
+  numbers: ["ONE", "TWO", "THREE", "FOUR"],
+  metals: ["IRON", "GOLD", "SILVER", "COPPER"],
+  gases: ["OXYGEN", "NITROGEN", "HYDROGEN", "HELIUM"],
+  liquids: ["WATER", "OIL", "WINE", "MILK"],
+  clothing: ["SHIRT", "PANTS", "SHOES", "HAT"],
+  tools: ["HAMMER", "SAW", "DRILL", "WRENCH"],
+  weapons: ["SWORD", "BOW", "GUN", "SPEAR"],
+  military: ["TANK", "JET", "NAVY", "INFANTRY"],
+  politics: ["VOTE", "LAW", "POWER", "STATE"],
+  economy: ["MONEY", "TRADE", "BANK", "TAX"],
+  jobs: ["NURSE", "TEACHER", "FARMER", "ENGINEER"],
+  hobbies: ["GAMING", "FISHING", "READING", "DRAWING"],
+  travel: ["HOTEL", "PLANE", "TOUR", "BEACH"],
+  continents: ["ASIA", "AFRICA", "EUROPE", "AMERICA"],
+  oceans: ["PACIFIC", "ATLANTIC", "INDIAN", "ARCTIC"],
+  countries: ["JAPAN", "BRAZIL", "CANADA", "FRANCE"],
+  capitals: ["TOKYO", "LONDON", "BERLIN", "OTTAWA"],
+  cities: ["NYC", "PARIS", "ROME", "CAIRO"],
+  landmarks: ["PYRAMID", "COLISEUM", "EIFFEL", "STATUE"],
+  transportmodes: ["BIKE", "BUS", "TRAM", "SUBWAY"],
+  entertainment: ["MOVIE", "GAME", "TV", "MUSIC"],
+  filmgenres: ["ACTION", "COMEDY", "DRAMA", "HORROR"],
+  videogames: ["MARIO", "ZELDA", "FORTNITE", "MINECRAFT"],
+  boardgames: ["CHESS", "CHECKERS", "SCRABBLE", "MONOPOLY"],
+  cardgames: ["POKER", "UNO", "BRIDGE", "BLACKJACK"],
+  programming: ["PYTHON", "JAVA", "HTML", "SQL"],
+  hardware: ["CPU", "GPU", "RAM", "DISK"],
+  networks: ["LAN", "WAN", "WIFI", "VPN"],
+  astronomytools: ["TELESCOPE", "RADAR", "SATELLITE", "PROBE"],
+  physicsconcepts: ["GRAVITY", "MOMENTUM", "WAVE", "FIELD"],
+  chemistryconcepts: ["ACID", "BASE", "ION", "SALT"],
+  biologyconcepts: ["GENE", "CELL", "PROTEIN", "HORMONE"],
+  geologyconcepts: ["LAVA", "MAGMA", "EROSION", "SEDIMENT"],
+  medicalfields: ["SURGERY", "DENTISTRY", "ONCOLOGY", "PEDIATRICS"],
+  sportsgear: ["BALL", "BAT", "RACKET", "GLOVES"],
+  athletics: ["RUN", "JUMP", "THROW", "SWIM"],
+  olympicdisciplines: ["JUDO", "ROWING", "FENCING", "ARCHERY"],
+  weathersevere: ["TORNADO", "CYCLONE", "HURRICANE", "BLIZZARD"],
+  disasters: ["FLOOD", "FIRE", "EARTHQUAKE", "ERUPTION"],
+  spaceobjects: ["ASTEROID", "COMET", "MOON", "PLANET"],
+  starnames: ["SIRIUS", "VEGA", "BETELGEUSE", "POLARIS"],
+  constellations: ["ORION", "URSA", "LYRA", "CASSIOPEIA"],
+  galaxies: ["MILKYWAY", "ANDROMEDA", "TRIANGULUM", "SOMBRERO"],
+  technology: ["ROBOT", "AI", "DRONE", "SENSOR"],
+  innovations: ["PRINTING", "STEAM", "ELECTRICITY", "INTERNET"],
+  inventions: ["WHEEL", "COMPASS", "TELEPHONE", "COMPUTER"],
+  vehicles: ["CAR", "TRUCK", "BIKE", "BUS"],
+  aircraft: ["JET", "GLIDER", "DRONE", "HELICOPTER"],
+  spacecraft: ["APOLLO", "VOYAGER", "CASSINI", "HUBBLE"],
+  famousscientists: ["NEWTON", "EINSTEIN", "CURIE", "DARWIN"],
+  philosophers: ["PLATO", "ARISTOTLE", "DESCARTES", "KANT"],
+  authors: ["SHAKESPEARE", "TOLSTOY", "AUSTEN", "ORWELL"],
+  painters: ["PICASSO", "VAN GOGH", "MONET", "DALI"],
+  composers: ["MOZART", "BACH", "BEETHOVEN", "CHOPIN"],
+  actors: ["HANKS", "CRUISE", "STREEP", "PITT"],
+  singers: ["BEYONCE", "ELVIS", "ADELE", "DRAKE"],
+  planets: ["MERCURY", "VENUS", "MARS", "JUPITER"],
+  moons: ["EUROPA", "TITAN", "GANYMEDE", "CALLISTO"],
+  elements: ["HYDROGEN", "OXYGEN", "CARBON", "NITROGEN"],
+  minerals: ["QUARTZ", "DIAMOND", "AMBER", "EMERALD"],
+  gems: ["RUBY", "SAPPHIRE", "TOPAZ", "OPAL"],
+  jewelry: ["RING", "NECKLACE", "BRACELET", "EARRINGS"],
+  furniture: ["TABLE", "CHAIR", "SOFA", "BED"],
+  appliances: ["FRIDGE", "OVEN", "TOASTER", "MICROWAVE"],
+  kitchen: ["SPOON", "FORK", "KNIFE", "PLATE"],
+  utensils: ["SPATULA", "WHISK", "LADLE", "TONGS"],
+  desserts: ["CAKE", "PIE", "COOKIE", "ICECREAM"],
+  breakfast: ["PANCAKE", "EGG", "BACON", "CEREAL"],
+  lunch: ["SANDWICH", "SALAD", "SOUP", "BURGER"],
+  dinner: ["STEAK", "PASTA", "CHICKEN", "FISH"],
+  spices: ["PEPPER", "SALT", "CINNAMON", "CLOVE"],
+  herbs: ["BASIL", "MINT", "THYME", "ROSEMARY"],
+  sauces: ["KETCHUP", "MAYO", "MUSTARD", "SOY"],
+  fastfood: ["PIZZA", "FRIES", "TACO", "NUGGETS"],
+  bakery: ["BAGEL", "MUFFIN", "DONUT", "CROISSANT"],
+  beverages: ["BEER", "WINE", "COLA", "LEMONADE"],
+  dairy: ["CHEESE", "YOGURT", "BUTTER", "CREAM"],
+  grains: ["WHEAT", "OATS", "BARLEY", "RYE"],
+  legumes: ["BEAN", "LENTIL", "CHICKPEA", "PEANUT"],
+  nuts: ["ALMOND", "CASHEW", "WALNUT", "PISTACHIO"],
+  seeds: ["SESAME", "SUNFLOWER", "PUMPKIN", "CHIA"],
+  flowers: ["ROSE", "TULIP", "DAISY", "LILY"],
+  trees: ["OAK", "PINE", "MAPLE", "PALM"],
+  leaves: ["FERN", "IVY", "MOSS", "BAMBOO"],
+  forests: ["RAINFOREST", "TAIGA", "SAVANNA", "TUNDRA"],
+  ecosystems: ["DESERT", "OCEAN", "GRASSLAND", "WETLAND"],
+  rivers: ["NILE", "AMAZON", "MISSISSIPPI", "DANUBE"],
+  mountains: ["EVEREST", "KILIMANJARO", "FUJI", "DENALI"],
+  islands: ["HAWAII", "ICELAND", "CUBA", "MADAGASCAR"],
+  seas: ["MEDITERRANEAN", "RED", "BLACK", "CARIBBEAN"],
+  mythology: ["ZEUS", "ODIN", "RA", "POSEIDON"],
+  gods: ["APOLLO", "THOR", "ANUBIS", "ATHENA"],
+  monsters: ["DRAGON", "HYDRA", "CYCLOPS", "MINOTAUR"],
+  fairytales: ["CINDERELLA", "SNOWWHITE", "ALADDIN", "PINOCCHIO"],
+  folklore: ["YETI", "BIGFOOT", "LOCHNESS", "KRAKEN"],
+  holidays: ["CHRISTMAS", "EASTER", "HALLOWEEN", "THANKSGIVING"],
+  festivals: ["CARNIVAL", "OKTOBERFEST", "DIWALI", "RAMADAN"],
+  months: ["JANUARY", "FEBRUARY", "MARCH", "APRIL"],
+  weekdays: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"],
+  seasons: ["SPRING", "SUMMER", "FALL", "WINTER"],
+  times: ["MORNING", "NOON", "EVENING", "NIGHT"],
+  clocks: ["HOUR", "MINUTE", "SECOND", "DAY"],
+  units: ["METER", "LITER", "GRAM", "SECOND"],
+  currencies: ["DOLLAR", "EURO", "YEN", "POUND"],
+  shapes3d: ["CUBE", "SPHERE", "CONE", "PYRAMID"],
+  materials: ["WOOD", "STONE", "PLASTIC", "GLASS"],
+  fabrics: ["COTTON", "WOOL", "SILK", "LINEN"],
+  clothingaccessories: ["BELT", "GLOVES", "SCARF", "TIE"],
+  shoes: ["BOOT", "SNEAKER", "SANDAL", "SLIPPER"],
+  hats: ["CAP", "BEANIE", "CROWN", "HELMET"],
+  bags: ["BACKPACK", "PURSE", "SUITCASE", "BRIEFCASE"],
+  watches: ["ROLEX", "SEIKO", "OMEGA", "CASIO"],
+  cosmetics: ["LIPSTICK", "MASCARA", "BLUSH", "PERFUME"],
+  skincare: ["LOTION", "SOAP", "TONER", "SERUM"],
+  haircare: ["SHAMPOO", "CONDITIONER", "GEL", "WAX"],
+  furnituredecor: ["LAMP", "CURTAIN", "RUG", "MIRROR"],
+  buildings: ["HOUSE", "CASTLE", "TEMPLE", "HUT"],
+  architecture: ["ARCH", "DOME", "COLUMN", "TOWER"],
+  bridges: ["BROOKLYN", "GOLDENGATE", "TOWER", "LONDON"],
+  transportwater: ["CANOE", "YACHT", "FERRY", "SUBMARINE"],
+  transportair: ["BALLOON", "BIPLANE", "AIRSHIP", "GLIDER"],
+  transportland: ["SKATEBOARD", "ROLLER", "SCOOTER", "SEGWAY"],
+  weaponsmedieval: ["AXE", "MACE", "DAGGER", "CROSSBOW"],
+  weaponsmodern: ["RIFLE", "GRENADE", "MISSILE", "MACHINEGUN"],
+  war: ["BATTLE", "SIEGE", "AMBUSH", "ALLIANCE"],
+  peace: ["TREATY", "TRUCE", "DIPLOMACY", "NEGOTIATION"],
+  laws: ["COURT", "JUDGE", "JURY", "TRIAL"],
+  crimes: ["ROBBERY", "MURDER", "FRAUD", "ARSON"],
+  punishments: ["PRISON", "FINE", "EXILE", "EXECUTION"],
+  rights: ["VOTE", "SPEECH", "ASSEMBLY", "RELIGION"],
+  government: ["PRESIDENT", "PARLIAMENT", "KING", "DICTATOR"],
+  ideologies: ["DEMOCRACY", "MONARCHY", "COMMUNISM", "FASCISM"],
+  wars: ["WWI", "WWII", "COLDWAR", "VIETNAM"],
+  revolutions: ["FRENCH", "AMERICAN", "RUSSIAN", "INDUSTRIAL"],
+  sciencebranches: ["PHYSICS", "CHEMISTRY", "BIOLOGY", "GEOLOGY"],
+  mathbranches: ["ALGEBRA", "GEOMETRY", "CALCULUS", "STATISTICS"],
+  compbranches: ["AI", "CYBERSECURITY", "GRAPHICS", "NETWORKS"],
+  medicinebranches: ["CARDIOLOGY", "DERMATOLOGY", "NEUROLOGY", "ONCOLOGY"],
+  engineering: ["CIVIL", "MECHANICAL", "ELECTRICAL", "CHEMICAL"],
+  spaceagencies: ["NASA", "ESA", "JAXA", "ROSCOSMOS"],
+  rockets: ["SATURN", "FALCON", "DELTA", "ATLAS"],
+  probes: ["VOYAGER", "PIONEER", "CASSINI", "JUNO"],
+  telescopes: ["HUBBLE", "WEBB", "KEPLER", "SPITZER"],
+  physicsunits: ["NEWTON", "JOULE", "WATT", "TESLA"],
+  chemistryelements: ["IRON", "COPPER", "ZINC", "TIN"],
+  biomes: ["DESERT", "FOREST", "OCEAN", "MOUNTAIN"],
+  animalswild: ["TIGER", "BEAR", "WOLF", "DEER"],
+  animalspets: ["DOG", "CAT", "HAMSTER", "PARROT"],
+  animalfarm: ["COW", "PIG", "CHICKEN", "SHEEP"],
+  animalssea: ["SHARK", "DOLPHIN", "OCTOPUS", "SEAL"],
+  animalsbirds: ["OWL", "HAWK", "DUCK", "SWAN"],
+  animalreptiles: ["CROCODILE", "ALLIGATOR", "IGUANA", "CHAMELEON"],
+  amphibians: ["FROG", "TOAD", "NEWT", "SALAMANDER"],
+  insects: ["ANT", "BEE", "WASP", "MOTH"],
+  butterflies: ["MONARCH", "SWALLOWTAIL", "ADMIRAL", "MORPHO"],
+  beetles: ["LADYBUG", "STAG", "FIREFLY", "Rhinoceros"],
+  arachnids: ["SPIDER", "SCORPION", "TICK", "MITE"],
+  crustaceans: ["CRAB", "LOBSTER", "SHRIMP", "BARNACLE"],
+  mollusks: ["SNAIL", "SLUG", "CLAM", "SQUID"],
+  fishfreshwater: ["TROUT", "SALMON", "CARP", "BASS"],
+  fishsaltwater: ["TUNA", "MACKEREL", "SARDINE", "ANCHOVY"],
+  sharks: ["HAMMERHEAD", "GREATWHITE", "TIGERSHARK", "MAKO"],
+  whales: ["BLUE", "HUMPBACK", "ORCA", "BELUGA"],
+  primates: ["GORILLA", "CHIMP", "LEMUR", "BABOON"],
+  bigcats: ["LION", "LEOPARD", "CHEETAH", "JAGUAR"],
+  bears: ["GRIZZLY", "POLAR", "PANDA", "BLACKBEAR"],
+  canines: ["WOLF", "COYOTE", "FOX", "JACKAL"],
+  equines: ["HORSE", "DONKEY", "MULE", "ZEBRA"],
+  rodents: ["RAT", "MOUSE", "SQUIRREL", "GUINEAPIG"],
+  marsupials: ["KANGAROO", "KOALA", "WALLABY", "OPOSSUM"],
+  dinosaurs: ["TREX", "STEGOSAURUS", "TRICERATOPS", "VELOCIRAPTOR"],
+  fossils: ["AMMONITE", "TRILOBITE", "PETRIFIEDWOOD", "BONE"],
+  rocks: ["GRANITE", "BASALT", "MARBLE", "SLATE"],
+  volcanos: ["VESUVIUS", "KRAKATOA", "STHELENS", "ETNA"],
+  earthquakes: ["FAULT", "SEISMIC", "AFTERSHOCK", "EPICENTER"],
+  weather: ["RAIN", "SNOW", "SUN", "WIND"],
+  storms: ["TORNADO", "HURRICANE", "BLIZZARD", "TSUNAMI"],
+  clouds: ["CIRRUS", "CUMULUS", "STRATUS", "NIMBUS"],
+  astronomy: ["PLANET", "STAR", "GALAXY", "NEBULA"],
+  planets: ["MERCURY", "VENUS", "MARS", "JUPITER"],
+  dwarfplanets: ["PLUTO", "CERES", "ERIS", "HAUMEA"],
+  moons: ["IO", "EUROPA", "GANYMEDE", "CALLISTO"],
+  constellations: ["ORION", "URSA", "SCORPIUS", "LYRA"],
+  telescopesground: ["KECK", "PALOMAR", "ARECIBO", "VLT"],
+  observatories: ["GREENWICH", "MAUNAKEA", "KITTPEAK", "PARANAL"],
+  spaceevents: ["ECLIPSE", "METEOR", "SUPERNOVA", "AURORA"],
+  spacemissions: ["APOLLO", "MERCURY", "GEMINI", "ARTEMIS"],
+  spacestations: ["ISS", "MIR", "TIANGONG", "SKYLAB"],
+  satellites: ["SPUTNIK", "HUBBLE", "Landsat", "GPS"],
+  mathconstants: ["PI", "E", "PHI", "TAU"],
+  numbers: ["PRIME", "EVEN", "ODD", "COMPOSITE"],
+  geometryshapes: ["TRIANGLE", "SQUARE", "HEXAGON", "OCTAGON"],
+  algebra: ["VARIABLE", "EQUATION", "FUNCTION", "GRAPH"],
+  calculus: ["DERIVATIVE", "INTEGRAL", "LIMIT", "SERIES"],
+  statistics: ["MEAN", "MEDIAN", "MODE", "VARIANCE"],
+  probability: ["COIN", "DICE", "CARD", "BAYES"],
+  physicsmechanics: ["FORCE", "MASS", "VELOCITY", "ACCELERATION"],
+  physicsthermo: ["HEAT", "WORK", "ENTROPY", "TEMPERATURE"],
+  physicswaves: ["FREQUENCY", "AMPLITUDE", "WAVELENGTH", "PHASE"],
+  physicsoptics: ["LENS", "MIRROR", "PRISM", "SPECTRUM"],
+  electricity: ["VOLTAGE", "CURRENT", "RESISTANCE", "CAPACITANCE"],
+  magnetism: ["NORTH", "SOUTH", "FIELD", "MAGNET"],
+  quantum: ["QUARK", "LEPTON", "HIGGS", "PHOTON"],
+  relativity: ["TIME", "SPACE", "LIGHT", "GRAVITY"],
+  chemistryorganic: ["ALKANE", "ALKENE", "KETONE", "ALCOHOL"],
+  chemistryinorganic: ["SALT", "OXIDE", "ACID", "BASE"],
+  labtools: ["BEAKER", "FLASK", "PIPETTE", "BURETTE"],
+  medicine: ["DOCTOR", "NURSE", "SURGEON", "PHARMACIST"],
+  diseases: ["FLU", "COVID", "CANCER", "DIABETES"],
+  vaccines: ["POLIO", "MEASLES", "HEPATITIS", "TETANUS"],
+  anatomy: ["HEART", "LUNG", "BRAIN", "KIDNEY"],
+  bones: ["FEMUR", "RIB", "SKULL", "SPINE"],
+  muscles: ["BICEPS", "TRICEPS", "QUADS", "CALVES"],
+  senses: ["SIGHT", "HEARING", "SMELL", "TOUCH"],
+  blood: ["RED", "WHITE", "PLATELET", "PLASMA"],
+  dna: ["GENE", "CHROMOSOME", "ALLELE", "MUTATION"],
+  evolution: ["DARWIN", "NATURAL", "SELECTION", "ADAPTATION"],
+  ecology: ["FOODCHAIN", "BIOME", "HABITAT", "POPULATION"],
+  environment: ["POLLUTION", "CLIMATE", "RECYCLING", "CONSERVATION"],
+  computers: ["CPU", "GPU", "RAM", "SSD"],
+  programming: ["PYTHON", "JAVA", "CPLUSPLUS", "JAVASCRIPT"],
+  databases: ["MYSQL", "ORACLE", "MONGODB", "POSTGRES"],
+  networking: ["ROUTER", "SWITCH", "FIREWALL", "SERVER"],
+  internet: ["WEB", "EMAIL", "CLOUD", "BROWSER"],
+  ai: ["MACHINELEARNING", "NEURAL", "CHATBOT", "VISION"],
+  robotics: ["ROVER", "DRONE", "AUTOMATON", "ANDROID"],
+  cybersec: ["VIRUS", "WORM", "TROJAN", "SPYWARE"],
+  cryptography: ["AES", "RSA", "SHA", "KEY"],
+  gaming: ["CONSOLE", "CONTROLLER", "ARCADE", "JOYSTICK"],
+  videogames: ["MARIO", "ZELDA", "SONIC", "TETRIS"],
+  boardgames: ["CHESS", "MONOPOLY", "SCRABBLE", "CLUE"],
+  cardgames: ["POKER", "BRIDGE", "HEARTS", "UNO"],
+  sportsball: ["SOCCER", "BASKETBALL", "BASEBALL", "TENNIS"],
+  sportsathletics: ["RUNNING", "JUMPING", "THROWING", "HURDLES"],
+  olympics: ["GOLD", "SILVER", "BRONZE", "TORCH"],
+  martialarts: ["KARATE", "JUDO", "TAEKWONDO", "KUNGFU"],
+  musicgenres: ["ROCK", "POP", "JAZZ", "CLASSICAL"],
+  instruments: ["PIANO", "GUITAR", "DRUMS", "VIOLIN"],
+  composers: ["BACH", "MOZART", "BEETHOVEN", "CHOPIN"],
+  bands: ["BEATLES", "QUEEN", "NIRVANA", "METALLICA"],
+  singers: ["ADELE", "ELVIS", "RIHANNA", "DRAKE"],
+  movies: ["INCEPTION", "TITANIC", "GLADIATOR", "FROZEN"],
+  actors: ["PITT", "JOLIE", "HANKS", "STREEP"],
+  directors: ["SPIELBERG", "NOLAN", "KUBRICK", "SCORSESE"],
+  tvshows: ["FRIENDS", "SEINFELD", "BREAKINGBAD", "OFFICE"],
+  streaming: ["NETFLIX", "DISNEY", "HULU", "PRIME"],
+  books: ["HOBBIT", "HARRY", "GATSBY", "DUNE"],
+  authors: ["TOLKIEN", "ROWLING", "ORWELL", "AUSTEN"],
+  poetry: ["SONNET", "HAIKU", "ODE", "EPIC"],
+  art: ["PAINTING", "SCULPTURE", "MOSAIC", "MURAL"],
+  painters: ["PICASSO", "MONET", "VAN_GOGH", "DALI"],
+  sculptors: ["MICHELANGELO", "RODIN", "BERNINI", "DONATELLO"],
+  photographers: ["ANSEL", "CARTIER", "ADAMS", "LANGE"],
+  fashiondesigners: ["CHANEL", "DIOR", "VERSACE", "ARMANI"],
+  cars: ["TESLA", "FORD", "TOYOTA", "HONDA"],
+  carparts: ["ENGINE", "BRAKE", "CLUTCH", "GEARBOX"],
+  motorcycles: ["HARLEY", "DUCATI", "KAWASAKI", "YAMAHA"],
+  bicycles: ["BMX", "MOUNTAIN", "ROAD", "HYBRID"],
+  aircraft: ["BOEING", "AIRBUS", "CESSNA", "CONCORDE"],
+  airlines: ["DELTA", "UNITED", "EMIRATES", "QANTAS"],
+  airports: ["JFK", "LAX", "HEATHROW", "HANEDA"],
+  trains: ["BULLET", "SUBWAY", "FREIGHT", "STEAM"],
+  stations: ["GRANDCENTRAL", "PENN", "KINGSCROSS", "SHINJUKU"],
+  ships: ["TITANIC", "QUEENMARY", "BISMARCK", "ENTERPRISE"],
+  harbors: ["NEWYORK", "SINGAPORE", "ROTTERDAM", "HAMBURG"],
+  explorers: ["COLUMBUS", "MAGELLAN", "VESPUCCI", "COOK"],
+  inventions: ["WHEEL", "PRINTINGPRESS", "LIGHTBULB", "TELEPHONE"],
+  inventors: ["EINSTEIN", "TESLA", "EDISON", "NEWTON"],
+  mathematicians: ["GAUSS", "EUCLID", "PYTHAGORAS", "NOETHER"],
+  philosophers: ["SOCRATES", "PLATO", "ARISTOTLE", "DESCARTES"],
+  psychologists: ["FREUD", "JUNG", "PIAGET", "SKINNER"],
+  economists: ["KEYNES", "SMITH", "MARX", "FRIEDMAN"],
+  politicians: ["LINCOLN", "CHURCHILL", "GANDHI", "MANDELA"],
+  worldleaders: ["OBAMA", "PUTIN", "MERKEL", "MACRON"],
+  kings: ["HENRY", "RICHARD", "LOUIS", "GEORGE"],
+  queens: ["ELIZABETH", "VICTORIA", "CLEOPATRA", "ISABELLA"],
+  emperors: ["NAPOLEON", "CAESAR", "HIROHITO", "ALEXANDER"],
+  battles: ["HASTINGS", "WATERLOO", "GETTYSBURG", "STALINGRAD"],
+  treaties: ["VERSAILLES", "PARIS", "UTRECHT", "TORDESILLAS"],
+  ancientcities: ["BABYLON", "ATHENS", "ROME", "SPARTA"],
+  moderncities: ["NEWYORK", "LONDON", "TOKYO", "PARIS"],
+  capitals: ["BERLIN", "MADRID", "OTTAWA", "CANBERRA"],
+  countries: ["BRAZIL", "CHINA", "INDIA", "MEXICO"],
+  continents: ["AFRICA", "ASIA", "EUROPE", "AMERICA"],
+  landmarks: ["PYRAMID", "EIFFEL", "STATUE", "COLISEUM"],
+  wonders: ["TAJMAHAL", "MACHUPICCHU", "CHICHENITZA", "PETRA"],
+  languages: ["ENGLISH", "SPANISH", "CHINESE", "ARABIC"],
+  alphabets: ["LATIN", "CYRILLIC", "GREEK", "HEBREW"],
+  writingtools: ["PEN", "PENCIL", "MARKER", "CRAYON"],
+  booksgenres: ["FICTION", "NONFICTION", "MYSTERY", "FANTASY"],
+  libraries: ["ALEXANDRIA", "BRITISH", "VATICAN", "CONGRESS"],
+  newspapers: ["TIMES", "GUARDIAN", "WASHINGTONPOST", "NYT"],
+  magazines: ["TIME", "FORBES", "VOGUE", "NATURE"],
+  publishing: ["EDITOR", "AUTHOR", "PRINTER", "ILLUSTRATOR"],
+  printing: ["INK", "PRESS", "PAPER", "TYPE"],
+  communication: ["EMAIL", "LETTER", "CALL", "TEXT"],
+  phones: ["IPHONE", "ANDROID", "NOKIA", "BLACKBERRY"],
+  socialmedia: ["FACEBOOK", "TWITTER", "INSTAGRAM", "TIKTOK"],
+  apps: ["WHATSAPP", "SNAPCHAT", "WECHAT", "TELEGRAM"],
+  websites: ["GOOGLE", "AMAZON", "YOUTUBE", "WIKIPEDIA"],
+  software: ["WINDOWS", "LINUX", "MACOS", "ANDROIDOS"],
+  hardware: ["MOTHERBOARD", "CPU", "MONITOR", "KEYBOARD"],
+  gadgets: ["TABLET", "SMARTWATCH", "HEADPHONES", "VRHEADSET"],
+  companies: ["APPLE", "MICROSOFT", "SAMSUNG", "SONY"],
+  startups: ["SPACEX", "UBER", "AIRBNB", "STRIPE"],
+  economics: ["SUPPLY", "DEMAND", "INFLATION", "GDP"],
+  finance: ["BANK", "STOCK", "BOND", "LOAN"],
+  investing: ["PORTFOLIO", "STOCKS", "OPTIONS", "FUTURES"],
+  accounting: ["ASSET", "LIABILITY", "EQUITY", "REVENUE"],
+  business: ["MARKETING", "MANAGEMENT", "STRATEGY", "BRANDING"],
+  careers: ["TEACHER", "ENGINEER", "LAWYER", "DOCTOR"],
+  education: ["SCHOOL", "COLLEGE", "UNIVERSITY", "ACADEMY"],
+  exams: ["SAT", "ACT", "GRE", "GMAT"],
+  classrooms: ["DESK", "BOARD", "PROJECTOR", "NOTEBOOK"],
+  stationery: ["ERASER", "RULER", "SHARPENER", "GLUE"],
+  toys: ["DOLL", "BLOCKS", "BALL", "CAR"],
+  childhoodgames: ["HOPSCOTCH", "TAG", "HIDESEEK", "MARBLES"],
+  playground: ["SLIDE", "SWING", "SANDBOX", "CLIMBER"],
+  hobbies: ["PAINTING", "READING", "GARDENING", "COOKING"],
+  crafts: ["KNITTING", "SEWING", "CROCHET", "EMBROIDERY"],
+  musicactivities: ["SINGING", "DANCING", "DRUMMING", "WHISTLING"],
+  filmsgenres: ["COMEDY", "DRAMA", "HORROR", "ROMANCE"],
+  theaters: ["BROADWAY", "WESTEND", "BOLSHOI", "SHAKESPEARE"],
+  actorsclassic: ["CHAPLIN", "MONROE", "DEAN", "GARLAND"],
+  actresses: ["HEPBURN", "TAYLOR", "ROBERTS", "WINSLET"],
+  fashion: ["DRESS", "SUIT", "SHIRT", "SKIRT"],
+  fabrics2: ["VELVET", "DENIM", "SATIN", "TWEED"],
+  accessories: ["NECKLACE", "EARRINGS", "BRACELET", "RING"],
+  cosmetics2: ["FOUNDATION", "EYESHADOW", "CONCEALER", "POWDER"],
+  jewelrytypes: ["BROOCH", "ANKLET", "TIARA", "CUFFLINKS"],
+  preciousmetals: ["GOLD", "SILVER", "PLATINUM", "PALLADIUM"],
+  gemstones: ["JADE", "ONYX", "TURQUOISE", "AMETHYST"],
+  colors: ["RED", "BLUE", "GREEN", "YELLOW"],
+  shades: ["CYAN", "MAGENTA", "MAROON", "OLIVE"],
+  paintingtools: ["BRUSH", "PALETTE", "EASEL", "CANVAS"],
+  artstyles: ["IMPRESSIONISM", "CUBISM", "SURREALISM", "REALISM"],
+  museums: ["LOUVRE", "MET", "UFFIZI", "PRADO"],
+  galleries: ["TATE", "MOMA", "NATIONAL", "HERMITAGE"],
+  architecturestyles: ["GOTHIC", "BAROQUE", "MODERNISM", "ROMANESQUE"],
+  skyscrapers: ["BURJKHALIFA", "EMPIRESTATE", "CN", "SHANGHAITOWER"],
+  bridgesfamous: ["BROOKLYN", "GOLDENGATE", "SYDNEY", "AKASHI"],
+  tunnels: ["CHANNEL", "GOTTHARD", "SEIKAN", "HOLLAND"],
+  roads: ["HIGHWAY", "FREEWAY", "PARKWAY", "BYPASS"],
+  maps: ["ATLAS", "GLOBE", "CHART", "PLAN"],
+  navigation: ["COMPASS", "GPS", "RADAR", "SONAR"],
+  time: ["CLOCK", "WATCH", "CALENDAR", "SUNDIAL"],
+  measurements: ["INCH", "FOOT", "MILE", "YARD"],
+  weight: ["GRAM", "KILOGRAM", "TON", "OUNCE"],
+  temperature: ["CELSIUS", "FAHRENHEIT", "KELVIN", "RANKINE"],
+  physicsconcepts: ["ENTROPY", "INERTIA", "GRAVITY", "MOMENTUM"],
+  chemistryconcepts: ["MOLE", "REACTION", "EQUILIBRIUM", "BOND"],
+  biologyconcepts: ["CELL", "DNA", "GENE", "ENZYME"],
+  astronomyconcepts: ["PLANET", "STAR", "GALAXY", "NEBULA"],
+  geologyconcepts: ["ROCK", "MINERAL", "FOSSIL", "LAVA"],
+  meteorology: ["HURRICANE", "TORNADO", "BLIZZARD", "TSUNAMI"],
+  oceanography: ["CURRENT", "TIDE", "REEF", "TRENCH"],
+  volcanology: ["MAGMA", "ASH", "PYROCLAST", "CRATER"],
+  seismology: ["FAULT", "FOCUS", "EPICENTER", "WAVE"],
+  paleontology: ["DINOSAUR", "TRILOBITE", "SKELETON", "AMBER"],
+  anthropology: ["CULTURE", "RITUAL", "LANGUAGE", "MYTH"],
+  sociology: ["CLASS", "POWER", "GROUP", "INSTITUTION"],
+  politicalscience: ["DEMOCRACY", "DICTATORSHIP", "MONARCHY", "REPUBLIC"],
+  law: ["COURT", "JUDGE", "JURY", "LAWYER"],
+  criminology: ["CRIME", "VICTIM", "OFFENDER", "PUNISHMENT"],
+  medicine: ["SURGERY", "THERAPY", "DIAGNOSIS", "CURE"],
+  anatomy: ["HEART", "BRAIN", "LIVER", "LUNG"],
+  physiology: ["CIRCULATION", "RESPIRATION", "DIGESTION", "NERVES"],
+  pathology: ["INFECTION", "CANCER", "ALLERGY", "DIABETES"],
+  pharmacology: ["ANTIBIOTIC", "ANALGESIC", "VACCINE", "INSULIN"],
+  nursing: ["BED", "IV", "BANDAGE", "CHART"],
+  dentistry: ["TOOTH", "BRUSH", "FILLING", "CROWN"],
+  veterinary: ["CAT", "DOG", "HORSE", "BIRD"],
+  sportsmedicine: ["SPRAIN", "STRAIN", "ICE", "STRETCH"],
+  nutrition: ["CARBS", "FATS", "PROTEINS", "VITAMINS"],
+  diet: ["VEGAN", "KETO", "PALEO", "MEDITERRANEAN"],
+  cookingmethods: ["FRY", "BAKE", "GRILL", "STEAM"],
+  kitchenutensils: ["KNIFE", "SPOON", "FORK", "WHISK"],
+  ingredients: ["SALT", "PEPPER", "OIL", "SUGAR"],
+  desserts: ["CAKE", "PIE", "COOKIE", "BROWNIE"],
+  breads: ["BAGUETTE", "RYE", "SOURDOUGH", "PITA"],
+  cheeses: ["CHEDDAR", "MOZZARELLA", "BRIE", "GOUDA"],
+  wines: ["MERLOT", "CABERNET", "PINOT", "RIESLING"],
+  beers: ["LAGER", "STOUT", "IPA", "PILSNER"],
+  cocktails: ["MARTINI", "MOJITO", "MARGARITA", "DAIQUIRI"],
+  coffees: ["ESPRESSO", "LATTE", "CAPPUCCINO", "AMERICANO"],
+  teas: ["OOLONG", "BLACK", "GREEN", "HERBAL"],
+  spices: ["CINNAMON", "CLOVES", "NUTMEG", "GINGER"],
+  herbs: ["BASIL", "THYME", "OREGANO", "ROSEMARY"],
+  fruits: ["APPLE", "BANANA", "MANGO", "ORANGE"],
+  vegetables: ["CARROT", "POTATO", "TOMATO", "BROCCOLI"],
+  meats: ["BEEF", "PORK", "CHICKEN", "LAMB"],
+  seafood: ["SALMON", "TUNA", "SHRIMP", "CRAB"],
+  grains: ["RICE", "WHEAT", "OATS", "BARLEY"],
+  legumes: ["BEANS", "LENTILS", "CHICKPEAS", "PEAS"],
+  nuts: ["ALMOND", "CASHEW", "PEANUT", "WALNUT"],
+  seeds: ["SESAME", "SUNFLOWER", "PUMPKIN", "FLAX"],
+  dairy: ["MILK", "BUTTER", "CREAM", "YOGURT"],
+  condiments: ["KETCHUP", "MUSTARD", "MAYO", "SOYSAUCE"],
+  sauces: ["PESTO", "SALSA", "CURRY", "TOMATO"],
+  soups: ["GAZPACHO", "MISO", "RAMEN", "BOUILLABAISSE"],
+  salads: ["CAESAR", "GREEK", "COBB", "CAPRESE"],
+  sandwiches: ["BLT", "CLUB", "REUBEN", "SUB"],
+  pizzas: ["MARGHERITA", "PEPPERONI", "HAWAIIAN", "SUPREME"],
+  pastas: ["SPAGHETTI", "RAVIOLI", "LASAGNA", "PENNE"],
+  noodles: ["UDON", "SOBA", "VERMICELLI", "LOMEIN"],
+  dumplings: ["GYOZA", "PIEROGI", "MOMO", "DIMSUM"],
+  riceDishes: ["BIRYANI", "RISOTTO", "PAELLA", "PILAF"],
+  curries: ["MASALA", "KORMA", "VINDALOO", "TIKKA"],
+  breadsWorld: ["NAAN", "TORTILLA", "CHAPATI", "FOCACCIA"],
+  breakfast: ["PANCAKES", "WAFFLES", "OMELET", "CEREAL"],
+  eggs: ["SCRAMBLED", "FRIED", "POACHED", "BOILED"],
+  dairyDesserts: ["ICECREAM", "CUSTARD", "PUDDING", "CHEESECAKE"],
+  candies: ["CHOCOLATE", "TOFFEE", "GUM", "LOLLIPOP"],
+  snacks: ["CHIPS", "POPCORN", "PRETZEL", "NACHOS"],
+  fastfood: ["BURGER", "FRIES", "HOTDOG", "NUGGETS"],
+  restaurants: ["DINER", "BISTRO", "CAFE", "BUFFET"],
+  hotels: ["MOTEL", "INN", "RESORT", "HOSTEL"],
+  travel: ["PASSPORT", "TICKET", "LUGGAGE", "VISA"],
+  tourism: ["TOUR", "GUIDE", "CRUISE", "EXCURSION"],
+  camping: ["TENT", "SLEEPINGBAG", "FLASHLIGHT", "CANTEEN"],
+  hiking: ["TRAIL", "BOOT", "MAP", "COMPASS"],
+  fairyTales: ["CINDERELLA", "SNOWWHITE", "RAPUNZEL", "SLEEPINGBEAUTY"],
+  nurseryRhymes: ["HUMPTY", "JACKJILL", "LONDONBRIDGE", "ITSYBITSY"],
+  childrenBooks: ["HOBBIT", "NARNIA", "HARRY", "MATILDA"],
+  classicNovels: ["MOBYDICK", "JANEEYRE", "WARPEACE", "GATSBY"],
+  modernNovels: ["DAVINCI", "TWILIGHT", "HUNGERGAMES", "DIVERGENT"],
+  poets: ["SHAKESPEARE", "WORDSWORTH", "WHITMAN", "DICKINSON"],
+  poems: ["ODYSSEY", "ILIAD", "DIVINECOMEDY", "CANTERBURY"],
+  plays: ["HAMLET", "MACBETH", "OTHELLO", "LEAR"],
+  playwrights: ["IBSEN", "CHEKHOV", "SOFOCLES", "ARISTOPHANES"],
+  epicPoems: ["BEOWULF", "KALEVALA", "MAHABHARATA", "RAMAYANA"],
+  philosophersModern: ["KANT", "HEGEL", "NIETZSCHE", "HEIDEGGER"],
+  existentialists: ["SARTRE", "CAMUS", "KIERKEGAARD", "JASPERS"],
+  feminists: ["DEBEAUVOIR", "WOOLF", "HOOKS", "FRIEDAN"],
+  politicalFigures: ["WASHINGTON", "JEFFERSON", "ROOSEVELT", "KENNEDY"],
+  usPresidents: ["LINCOLN", "OBAMA", "TRUMP", "BIDEN"],
+  ukPrimeMinisters: ["CHURCHILL", "THATCHER", "MAY", "SUNAK"],
+  frenchLeaders: ["NAPOLEON", "DEGAULLE", "MACRON", "HOLLAND"],
+  russianLeaders: ["LENIN", "STALIN", "PUTIN", "GORBACHEV"],
+  chineseLeaders: ["MAO", "XI", "DENG", "ZHOU"],
+  indianLeaders: ["GANDHI", "MODI", "NEHRU", "AMBEDKAR"],
+  revolutions: ["FRENCH", "AMERICAN", "RUSSIAN", "CUBAN"],
+  wars: ["WWI", "WWII", "KOREAN", "VIETNAM"],
+  coldWar: ["BERLIN", "CUBA", "SPACE", "NUCLEAR"],
+  peaceTreaties: ["GHENT", "WESTPHALIA", "VERSAILLES", "VIENNA"],
+  humanRights: ["DECLARATION", "AMNESTY", "CIVILRIGHTS", "GENEVA"],
+  organizations: ["UN", "NATO", "WHO", "WTO"],
+  charities: ["RED", "OXFAM", "UNICEF", "SALVATION"],
+  religions: ["CHRISTIANITY", "ISLAM", "HINDUISM", "BUDDHISM"],
+  denominations: ["CATHOLIC", "PROTESTANT", "ORTHODOX", "ANGLICAN"],
+  holyBooks: ["BIBLE", "QURAN", "TORAH", "VEDAS"],
+  prophets: ["MOSES", "JESUS", "MUHAMMAD", "BUDDHA"],
+  churches: ["BASILICA", "CATHEDRAL", "CHAPEL", "MONASTERY"],
+  rituals: ["PRAYER", "FASTING", "PILGRIMAGE", "SACRIFICE"],
+  festivalsReligious: ["PASSOVER", "RAMADAN", "HOLI", "VESAK"],
+  symbols: ["CROSS", "CRESCENT", "OM", "LOTUS"],
+  saints: ["FRANCIS", "TERESA", "BENEDICT", "GEORGE"],
+  mythologyGreek: ["ZEUS", "HERA", "POSEIDON", "HADES"],
+  mythologyNorse: ["ODIN", "THOR", "LOKI", "FREYA"],
+  mythologyEgyptian: ["OSIRIS", "ISIS", "ANUBIS", "HORUS"],
+  climbing: ["ROPE", "HARNESS", "CARABINER", "HELMET"],
+  fishing: ["ROD", "REEL", "HOOK", "BAIT"],
+  hunting: ["RIFLE", "BOW", "DECOY", "CAMO"],
+  survival: ["FIRE", "WATER", "SHELTER", "FOOD"],
+  gardening: ["SHOVEL", "RAKE", "HOSE", "SEEDS"],
+  farming: ["TRACTOR", "PLOW", "BARN", "SILO"],
+  tools: ["HAMMER", "SAW", "DRILL", "WRENCH"],
+  construction: ["BRICK", "CEMENT", "NAIL", "BEAM"],
+  materials: ["WOOD", "STEEL", "PLASTIC", "GLASS"],
+  fabrics: ["COTTON", "WOOL", "SILK", "LINEN"],
+  clothing: ["JEANS", "TUNIC", "HOODIE", "COAT"],
+  shoes: ["BOOT", "SNEAKER", "SANDAL", "SLIPPER"],
+  hats: ["CAP", "FEDORA", "BEANIE", "HELMET"],
+  outerwear: ["JACKET", "PARKA", "PONCHO", "CLOAK"],
+  uniforms: ["POLICE", "MILITARY", "CHEF", "NURSE"],
+  costumes: ["MASK", "CAPE", "ROBE", "WIG"],
+  festivals: ["CARNIVAL", "DIWALI", "EID", "CHRISTMAS"],
+  holidays: ["NEWYEAR", "THANKSGIVING", "EASTER", "HALLOWEEN"],
+  traditions: ["DANCE", "FEAST", "PARADE", "MUSIC"],
+  mythology: ["ZEUS", "ODIN", "RA", "QUETZALCOATL"],
+  folklore: ["FAIRY", "GOBLIN", "TROLL", "WITCH"],
+  legends: ["ARTHUR", "ROBINHOOD", "BEOWULF", "ACHILLES"]
+}
+;
+
+  let usedCategories = new Set();
+
+  let puzzle = null;
+  let tileStates = {};
+  let selected = [];
+  let foundGroups = [];
+  let guesses = 0;
+  let streak = 0;
+
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const guessesEl = document.getElementById('guesses');
+  const foundEl = document.getElementById('found');
+  const streakEl = document.getElementById('streakCount');
+  const modeEl = document.getElementById('mode');
+
+ const container = document.querySelector('.glitter-container');
+
+function createGlitter() {
+  const glitter = document.createElement('div');
+  glitter.classList.add('glitter');
+  
+  // Random start position
+  const startX = Math.random() * window.innerWidth;
+  const startY = Math.random() * window.innerHeight;
+  const startZ = Math.random() * 1000 - 500; // 3D depth
+  
+  glitter.style.transform = `translate3d(${startX}px, ${startY}px, ${startZ}px)`;
+  
+  container.appendChild(glitter);
+  
+  // Animate toward player
+  const endX = window.innerWidth/2 + (Math.random() * 200 - 100);
+  const endY = window.innerHeight/2 + (Math.random() * 200 - 100);
+  const endZ = -200; // Comes toward screen
+
+  glitter.animate([
+    { transform: `translate3d(${startX}px, ${startY}px, ${startZ}px) rotateY(0deg) rotateX(0deg)` },
+    { transform: `translate3d(${endX}px, ${endY}px, ${endZ}px) rotateY(720deg) rotateX(720deg)` }
+  ], {
+    duration: 2000 + Math.random() * 1000,
+    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    fill: 'forwards'
+  });
+  
+  // Remove glitter after animation
+  setTimeout(() => glitter.remove(), 3000);
+}
+
+// Create a burst of glitter
+function burstGlitter(count = 50) {
+  for (let i = 0; i < count; i++) {
+    setTimeout(createGlitter, Math.random() * 300);
+  }
+}
+
+// Example: trigger when game finishes
+burstGlitter(100);
+
+ 
+  function newGame(){
+    // pick 4 unique random categories not used before
+    const keys = Object.keys(CATEGORY_POOL).filter(k=>!usedCategories.has(k));
+    if(keys.length < 4){
+      usedCategories.clear();
+    }
+    const chosen = shuffleArray(keys).slice(0,4);
+    chosen.forEach(k=>usedCategories.add(k));
+
+    puzzle = {solution: chosen.map(k=>CATEGORY_POOL[k])};
+    puzzle.words = puzzle.solution.flat();
+    puzzle.words = shuffleArray(puzzle.words);
+
+    tileStates = {};
+    puzzle.words.forEach(w=> tileStates[w] = {state:'idle'});
+    selected = [];
+    foundGroups = [];
+    guesses = 0;
+
+    renderBoard();
+    updateUI();
+    statusEl.textContent = 'Select words that you think form a category. When you pick 4, they will be checked.';
+  }
+
+ function triggerShake() {
+  const container = document.getElementById('game-container');
+  container.classList.add('shake');
+
+  // Remove the class after animation ends
+  setTimeout(() => {
+    container.classList.remove('shake');
+  }, 600); // matches animation duration
+}
+
+ function playShakeSound() {
+  const sound = document.getElementById('shake-sound');
+  sound.currentTime = 0; // restart if already playing
+  sound.play();
+}
+
+// Call both shake and sound together
+function celebrate() {
+  triggerShake();
+  playShakeSound();
+  triggerConfetti(); // your existing glitter/confetti function
+}
+
+ 
+  function renderBoard(){
+    boardEl.innerHTML = '';
+    puzzle.words.forEach((w, idx)=>{
+      const t = document.createElement('div');
+      t.className = 'tile';
+      t.dataset.word = w;
+      t.tabIndex = 0;
+      t.id = 'tile-'+idx;
+      t.textContent = w;
+      applyTileState(t,w);
+      t.addEventListener('click', ()=> toggleSelect(w,t));
+      t.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleSelect(w,t);} 
+      });
+      boardEl.appendChild(t);
+    });
+  }
+
+  function applyTileState(el, word){
+    const s = tileStates[word].state;
+    el.classList.remove('selected','correct','wrong');
+    el.style.pointerEvents = (s==='correct') ? 'none' : 'auto';
+    if(s==='selected') el.classList.add('selected');
+    if(s==='correct') el.classList.add('correct');
+    if(s==='wrong') el.classList.add('wrong');
+  }
+
+  function toggleSelect(word, tileEl){
+    const state = tileStates[word].state;
+    if(state==='correct') return;
+    if(state==='selected'){
+      tileStates[word].state='idle';
+      selected = selected.filter(x=>x!==word);
+    } else {
+      if(selected.length>=4) return;
+      tileStates[word].state='selected';
+      selected.push(word);
+    }
+    renderBoard();
+    if(selected.length===4) checkSelection();
+  }
+
+  function checkSelection(){
+    guesses++;
+    guessesEl.textContent = guesses;
+    const selSorted = [...selected].sort();
+    const matchedIndex = puzzle.solution.findIndex(g=> arraysEqual(selSorted, g.slice().sort()));
+    if(matchedIndex!==-1 && !groupAlreadyFound(selSorted)){
+      selected.forEach(w=> tileStates[w].state='correct');
+      foundGroups.push(selSorted);
+      foundEl.textContent = foundGroups.length;
+      statusEl.textContent = 'Nice — category found!';
+      streak++;
+      streakEl.textContent = streak;
+      renderBoard();
+      setTimeout(()=>{
+        selected = [];
+        renderBoard();
+        if(foundGroups.length===4) endGame(true);
+      },700);
+    } else {
+      selected.forEach(w=> tileStates[w].state='wrong');
+      renderBoard();
+      statusEl.textContent = 'Not a category. Try again.';
+      streak = 0; streakEl.textContent = streak;
+      setTimeout(()=>{
+        selected.forEach(w=> tileStates[w].state='idle');
+        selected = [];
+        renderBoard();
+        statusEl.textContent = 'Select words that you think form a category.';
+      },900);
+    }
+  }
+
+  function groupAlreadyFound(sortedGroup){
+    return foundGroups.some(g=> arraysEqual(g.slice().sort(), sortedGroup));
+  }
+
+  function endGame(won){
+    if(won){
+      statusEl.textContent = 'You found all categories — nice job!';
+    } else {
+      statusEl.textContent = 'Game over.';
+    }
+  }
+
+function createConfetti() {
+  const container = document.getElementById('confetti-container');
+  const colors = ['#FF5733','#FFC300','#DAF7A6','#33FFBD','#3375FF','#8E33FF'];
+
+  for(let i=0; i<150; i++){
+    const confetti = document.createElement('div');
+    confetti.classList.add('confetti');
+
+    // Random starting X and Z positions
+    const x = Math.random() * window.innerWidth - window.innerWidth/2;
+    const z = Math.random() * 500 - 250; // depth
+    confetti.style.setProperty('--x', `${x}px`);
+    confetti.style.setProperty('--z', `${z}px`);
+
+    // Random color
+    confetti.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+
+    // Random animation duration
+    confetti.style.animationDuration = `${Math.random()*2 + 3}s`;
+
+    // Random size
+    const size = Math.random()*8 + 4;
+    confetti.style.width = `${size}px`;
+    confetti.style.height = `${size*0.6}px`;
+
+    container.appendChild(confetti);
+
+    // Remove after animation
+    confetti.addEventListener('animationend', () => confetti.remove());
+  }
+}
+
+// Trigger when game finishes:
+createConfetti();
+
+  
+  function shuffleArray(a){
+    for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+    return a;
+  }
+  function arraysEqual(a,b){
+    if(a.length!==b.length) return false; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return false; return true;
+  }
+
+  document.getElementById('newBtn').addEventListener('click', ()=>{ newGame(); });
+  document.getElementById('shuffleBtn').addEventListener('click', ()=>{ puzzle.words = shuffleArray(puzzle.words); renderBoard(); });
+
+  window.addEventListener('keydown', (e)=>{
+    const key = e.key.toUpperCase();
+    const map = '123456789QWERTYUIOPASDF';
+    const idx = map.indexOf(key);
+    if(idx>=0 && idx<16){
+      const tile = document.getElementById('tile-'+idx);
+      if(tile){ tile.click(); tile.focus(); }
+    }
+    if(key==='R'){
+      newGame();
+    }
+  });
+
+  newGame();
+  </script>
+  <script>
+   
+   const flipSound = new Audio('flip.mp3');
+tile.addEventListener('click', () => flipSound.play());
+
+   
+   // Add flip effect when a tile is clicked
+const board = document.getElementById('board');
+
+board.addEventListener('click', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile) return;
+
+  // Prevent double flipping
+  if (tile.classList.contains('flip')) return;
+
+  // Add the flip class
+  tile.classList.add('flip');
+
+  // Optional: remove the class after animation ends so it can flip again
+  tile.addEventListener('animationend', () => {
+    tile.classList.remove('flip');
+  }, { once: true });
+});
+
+   
+   const tiles = document.querySelectorAll('.tile');
+const wordContainer = document.querySelector('.word'); // Your word row
+
+// Flip each tile individually
+function flipTiles() {
+  tiles.forEach((tile, index) => {
+    setTimeout(() => {
+      tile.classList.add('flip');
+      tile.addEventListener('animationend', () => {
+        tile.classList.remove('flip');
+      }, { once: true });
+    }, index * 300); // delay between letters
+  });
+}
+
+// Super flip whole word if correct
+function superFlipWord() {
+  wordContainer.classList.add('correct');
+  wordContainer.addEventListener('animationend', () => {
+    wordContainer.classList.remove('correct');
+  }, { once: true });
+}
+
+// Example: call this when checking the word
+function checkWord(isCorrect) {
+  if (isCorrect) {
+    superFlipWord();
+  } else {
+    flipTiles();
+  }
+}
+
+  </script>
+</body>
+</html>
