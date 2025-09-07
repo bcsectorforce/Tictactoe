@@ -1,658 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Connect 4: Theme Edition</title>
-  <style>
-    body {
-      background: #0f0f0f;
-      color: #fff;
-      font-family: 'Courier New', monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      overflow: hidden;
-      position: relative;
-    }
-    h1 {
-      font-size: 2em;
-      margin-bottom: 20px;
-    }
-    #board {
-      display: grid;
-      grid-template-columns: repeat(7, 60px);
-      grid-template-rows: repeat(6, 60px);
-      gap: 5px;
-      user-select: none;
-      position: relative;
-    }
-    .cell.hover {
-  box-shadow: 0 0 10px 4px rgba(255, 255, 255, 0.6);
-  transform: scale(1.1);
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Ops Simulator 4.0</title>
+<style>
+body {
+  font-family: 'Courier New', monospace;
+  background-color: #000;
+  color: #0f0;
+  margin: 0;
+  padding: 20px;
 }
-.dropping-piece {
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 500;
-  transform: translateY(0);
-  transition: transform 0.5s ease-in;
+#terminal {
+  border: 2px solid #0f0;
+  padding: 10px;
+  height: 500px;
+  overflow-y: auto;
+  background-color: #000;
 }
-.dropping-piece.player {
-  background-color: #00f;
+input {
+  width: 100%;
+  padding: 10px;
+  background: #000;
+  color: #0f0;
+  border: 2px solid #0f0;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
 }
-.dropping-piece.ai {
-  background-color: #f00;
+.stats {
+  margin: 10px 0;
 }
-
-#title {
-  opacity: 1; /* visible */
-  white-space: nowrap; /* keep on one line */
-  overflow: hidden;    /* hide the overflowing text */
-  border-right: 2px solid orange; /* cursor effect */
-  animation: blink-caret 0.75s step-end infinite;
+.code-challenge {
+  color: #ff0;
 }
-
-@keyframes blink-caret {
-  from, to { border-color: transparent; }
-  50% { border-color: orange; }
-}
-#title {
-  color: blue;
-}
-
-    .cell {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background-color: #222;
-      transition: background-color 0.4s ease, transform 0.3s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 1;
-    }
-    .cell.player {
-      background-color: #00f;
-    }
-    .cell.ai {
-      background-color: #f00;
-    }
-    #themeSelector, #modeSelector {
-      margin-top: 10px;
-      font-size: 1rem;
-      padding: 4px 8px;
-      cursor: pointer;
-    }
-    #stats {
-      margin-top: 10px;
-      font-size: 1.1rem;
-      user-select: none;
-    }
-    body.royal {
-      background: linear-gradient(to bottom, #2e0854, #ffd700);
-    }
-    body.royal .cell.player {
-      background-color: #ffd700;
-    }
-    body.royal .cell.ai {
-      background-color: #6a0dad;
-    }
-    body.hacking {
-      background: #000;
-      color: #0f0;
-    }
-    body.hacking .cell.player {
-      background-color: #0f0;
-    }
-    body.hacking .cell.ai {
-      background-color: #0ff;
-    }
-    body.space {
-      background: radial-gradient(circle at center, #111 0%, #000 100%);
-    }
-    body.space .cell.player {
-      background: linear-gradient(to bottom, #0cf, #06f);
-    }
-    body.space .cell.ai {
-      background: linear-gradient(to top, #f0f, #90f);
-    }
-    #confetti {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 1000;
-    }
-    #banner {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.8);
-      border: 3px solid #0ff;
-      border-radius: 10px;
-      padding: 20px 40px;
-      font-size: 2rem;
-      color: #0ff;
-      font-weight: bold;
-      text-align: center;
-      pointer-events: none;
-      z-index: 2000;
-      user-select: none;
-      display: none;
-    }
-  </style>
+</style>
 </head>
 <body>
 
-<h1 id="title"></h1>
+<h1>Cyber Ops Simulator 4.0</h1>
+
+<div class="stats"></div>
+
+<div id="terminal"></div>
+<input type="text" id="commandInput" placeholder="" autofocus />
 
 <script>
-  async function typeText(element, text, delay = 100) {
-    for (let i = 0; i < text.length; i++) {
-      element.textContent += text[i];
-      await new Promise(r => setTimeout(r, delay));
-    }
-  }
+let money = 0;
+let btc = 0;
+let btcPrice = 1000;
+let software = 1;
+let security = 50;
+let trace = 0;
+let terminal = document.getElementById('terminal');
+let input = document.getElementById('commandInput');
+let currentServer = null;
+let mission = null;
+let codeChallenge = null;
+let codeTimer = null;
 
-  async function deleteText(element, delay = 50) {
-    while (element.textContent.length > 0) {
-      element.textContent = element.textContent.slice(0, -1);
-      await new Promise(r => setTimeout(r, delay));
-    }
-  }
+let repHackers = 0, repCorps = 0, repLaw = 0;
+let inventory = [];
+let serverBuffs = {};
 
-  async function runTypeDelete() {
-    const element = document.getElementById('title');
-    
-    // Type "Connect 4"
-    await typeText(element, "Connect 4");
-    // Pause for 1 second
-    await new Promise(r => setTimeout(r, 1050));
-    
-    // Delete "Connect 4"
-    await deleteText(element);
-    // Pause for 0.5 seconds
-    await new Promise(r => setTimeout(r, 500));
-    
-    // Type "made by James"
-    await typeText(element, "Made by James");
-  }
+let servers = {
+  server1: {difficulty: 1, reward: [200, 800]},
+  server2: {difficulty: 2, reward: [500, 2000]},
+  server3: {difficulty: 3, reward: [1000, 5000]},
+  gov: {difficulty: 4, reward: [2000, 7000]},
+  bank: {difficulty: 4, reward: [3000, 9000]},
+  megacorp: {difficulty: 5, reward: [5000, 15000]},
+  military: {difficulty: 6, reward: [10000, 30000]}
+};
 
-  runTypeDelete();
-</script>
-
-  <div id="board"></div>
-  <select id="themeSelector" aria-label="Select Theme">
-    <option value="default">Default</option>
-    <option value="royal">Royal</option>
-    <option value="hacking">Hacking</option>
-    <option value="space">Space</option>
-  </select>
-  <select id="modeSelector" aria-label="Select Difficulty Mode">
-    <option value="normal">Normal</option>
-    <option value="hard">Hard</option>
-    <option value="impossible">Impossible</option>
-  </select>
-  <div id="stats"></div>
-  <div id="banner"></div>
-  <canvas id="confetti"></canvas>
-
-  <audio id="winSound" src="https://www.soundjay.com/human/sounds/applause-8.mp3"></audio>
-  <audio id="loseSound" src="https://www.soundjay.com/misc/sounds/fail-trombone-02.mp3"></audio>
-
-<script>
-  const board = document.getElementById('board');
-  const banner = document.getElementById('banner');
-  const rows = 6;
-  const cols = 7;
-  let gameBoard = Array(rows).fill(null).map(() => Array(cols).fill(null));
-  let gameOver = false;
-  let mode = 'normal';
-  let confettiAnimationId = null;
-
-  let stats = {
-    normal: { wins: 0, losses: 0 },
-    hard: { wins: 0, losses: 0 },
-    impossible: { wins: 0, losses: 0 }
-  };
-
-  function loadStats() {
-    const saved = localStorage.getItem('connect4Stats');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        for (const key in stats) {
-          if (parsed[key]) {
-            stats[key].wins = parsed[key].wins || 0;
-            stats[key].losses = parsed[key].losses || 0;
-          }
-        }
-      } catch {}
-    }
-  }
-
-  function saveStats() {
-    localStorage.setItem('connect4Stats', JSON.stringify(stats));
-  }
-
-  function displayStats() {
-    const s = stats[mode];
-    const total = s.wins + s.losses;
-    const winRate = total ? ((s.wins / total) * 100).toFixed(1) : "N/A";
-    document.getElementById('stats').textContent =
-      `Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)} | Wins: ${s.wins} | Losses: ${s.losses} | Win Rate: ${winRate}%`;
-  }
-
-  function initBoard() {
-    board.innerHTML = '';
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-        cell.dataset.row = r;
-        cell.dataset.col = c;
-        board.appendChild(cell);
-      }
-    }
-  }
-
-  initBoard();
-  loadStats();
-  displayStats();
-
-  document.getElementById('themeSelector').addEventListener('change', () => {
-    document.body.className = document.getElementById('themeSelector').value;
-  });
-
-  document.getElementById('modeSelector').addEventListener('change', (e) => {
-    mode = e.target.value;
-    resetGame();
-    displayStats();
-  });
-
-  board.addEventListener('click', e => {
-    if (gameOver) return;
-    const col = parseInt(e.target.dataset.col);
-    if (!isNaN(col)) {
-      makeMove(col, 'player');
-    }
-  });
-
-  function animateDrop(col, row, player) {
-  return new Promise((resolve) => {
-    const boardRect = board.getBoundingClientRect();
-
-    // Calculate start position (top of the board)
-    const startX = boardRect.left + col * 65 + 2; // 60px + 5px gap approx
-    const startY = boardRect.top - 60; // just above the board
-
-    // Calculate end position (target cell)
-    const endY = boardRect.top + row * 65 + 2;
-
-    // Create dropping piece element
-    const droppingPiece = document.createElement('div');
-    droppingPiece.classList.add('dropping-piece', player);
-    droppingPiece.style.left = `${startX}px`;
-    droppingPiece.style.top = `${startY}px`;
-
-    document.body.appendChild(droppingPiece);
-
-    // Trigger animation by changing transform property
-    requestAnimationFrame(() => {
-      droppingPiece.style.transform = `translateY(${endY - startY}px)`;
-    });
-
-    // When transition ends, remove element and resolve Promise
-    droppingPiece.addEventListener('transitionend', () => {
-      droppingPiece.remove();
-      resolve();
-    });
-  });
+function updateStats() {
+  document.querySelector('.stats').innerHTML = 
+    `Money: $${money} | BTC: ${btc} | BTC Price: $${btcPrice} | Software: ${software} | Security: ${security}% | Trace: ${trace}% | Rep(Hackers): ${repHackers} | Rep(Corps): ${repCorps} | Rep(Law): ${repLaw}`;
 }
 
-  async function typeWriter(element, delay = 100) {
-  const text = element.textContent;
-  element.textContent = '';
-  for (let i = 0; i < text.length; i++) {
-    element.textContent += text[i];
-    await new Promise(r => setTimeout(r, delay));
+function log(text) {
+  terminal.innerHTML += `<p>> ${text}</p>`;
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function checkCaught() {
+  if(trace >= 100) {
+    log("TRACE LEVEL MAX! You got caught! GAME OVER.");
+    input.disabled = true;
+    return true;
+  }
+  if(repLaw >= 100) {
+    log("🚨 You are now the MOST WANTED hacker in the world! YOU WIN.");
+    input.disabled = true;
+    return true;
+  }
+  return false;
+}
+
+function randomEvent() {
+  let roll = Math.random();
+  if(roll < 0.05) {
+    let loss = Math.floor(Math.random()*300+100);
+    money = Math.max(0, money - loss);
+    log(`⚠ MALWARE ATTACK! You lost $${loss}`);
+    security -= 5;
+    trace += 10;
+    repLaw += 1;
+  } else if(roll < 0.08) {
+    trace += 15;
+    log("⚠ Police surveillance increased! Trace rising faster.");
+    repLaw -= 2;
+  } else if(roll < 0.10) {
+    btc += 1;
+    log("✅ Anonymous group donated 1 BTC to you.");
+    repHackers += 2;
+  } else if(roll < 0.12) {
+    log("🤫 Insider leaked a backdoor for server3. Success chance doubled for 3 turns.");
+    serverBuffs["server3"] = 3;
+    repCorps -= 3;
   }
 }
 
-const title = document.getElementById('title');
-typeWriter(title);
+function startMission() {
+  let missions = [
+    "Steal confidential data from server2",
+    "Destroy malware hidden in server3",
+    "Infiltrate corporation database on server1",
+    "Hack government server (gov) for classified files",
+    "Drain funds from international bank server (bank)",
+    "Steal blueprints from MegaCorp",
+    "Infiltrate military server for weapons data"
+  ];
+  mission = missions[Math.floor(Math.random()*missions.length)];
+  log("New Mission: " + mission);
+}
 
-  function makeMove(col, player) {
-  if (gameOver) return;
-  const row = getAvailableRow(col);
-  if (row === -1) return;
+function completeMission() {
+  if(!mission) return;
+  log("🎯 Mission complete! Rewards granted.");
+  money += 2000;
+  btc += 1;
+  security += 5;
+  repHackers += 3;
+  repCorps -= 3;
+  repLaw += 1;
+  mission = null;
+}
 
-  animateDrop(col, row, player).then(() => {
-    gameBoard[row][col] = player;
-    updateCell(row, col, player);
+function startCodeChallenge() {
+  let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  codeChallenge = "";
+  for(let i=0; i<4; i++) codeChallenge += chars[Math.floor(Math.random()*chars.length)];
+  log(`<span class='code-challenge'>Password crack required! Type: ${codeChallenge} within 10 seconds.</span>`);
+  codeTimer = setTimeout(() => {
+    log("❌ Failed to enter code in time! Trace increased.");
+    trace += 20;
+    codeChallenge = null;
+  }, 10000);
+}
 
-    if (checkWin(row, col, player)) {
-      gameOver = true;
-      if (player === 'player') {
-        stats[mode].wins++;
+function evadeMiniGame() {
+  let seq = Math.random().toString(36).substring(2,6).toUpperCase();
+  log(`<span class='code-challenge'>TRACE ALERT! Type ${seq} within 8 seconds to reroute signal.</span>`);
+  codeChallenge = "EVADE-"+seq;
+  codeTimer = setTimeout(() => {
+    log("❌ Evade failed. Trace continues climbing.");
+    codeChallenge = null;
+  }, 8000);
+}
+
+function executeCommand(cmd) {
+  if(checkCaught()) return;
+
+  let parts = cmd.trim().split(" ");
+  let action = parts[0].toLowerCase();
+  let target = parts.slice(1).join(" ").toLowerCase();
+
+  // Evade / code mini-game
+  if(codeChallenge) {
+    if(codeChallenge.startsWith("EVADE-")) {
+      let seq = codeChallenge.split("-")[1];
+      if(cmd.trim().toUpperCase() === seq) {
+        clearTimeout(codeTimer);
+        log("✅ Evade successful! Trace reduced by 20%");
+        trace = Math.max(0, trace-20);
       } else {
-        stats[mode].losses++;
+        log("❌ Wrong sequence. Trace penalty.");
+        trace += 10;
       }
-      saveStats();
-      displayStats();
-      celebrate(player);
+      codeChallenge = null;
+      updateStats();
+      return;
+    } else {
+      if(cmd.trim().toUpperCase() === codeChallenge) {
+        clearTimeout(codeTimer);
+        log("✅ Code cracked successfully! Hack succeeded.");
+        let gain = Math.floor(Math.random()*3000 + 1000);
+        money += gain;
+        log(`You gained $${gain}`);
+      } else {
+        log("❌ Wrong code! Trace increased heavily.");
+        trace += 30;
+      }
+      codeChallenge = null;
+      updateStats();
       return;
     }
+  }
 
-    if (isBoardFull()) {
-      gameOver = true;
-      showBanner("It's a draw!", "#ccc");
-      launchConfetti();
-      setTimeout(clearConfetti, 7000);
-      return;
-    }
+  switch(action) {
+    case "help":
+      log("Commands: scan, connect [server], hack, upgrade software/security, status, buy [item], sell [item], use [item], mission, darknet, blackmarket, evade, help");
+      break;
+    case "scan":
+      log("Scanning network... Found servers: server1 (easy), server2 (medium), server3 (hard), gov, bank, megacorp, military");
+      trace += 5;
+      break;
+    case "connect":
+      if(target && servers[target]) {
+        currentServer = target;
+        log(`Connected to ${target}. Difficulty: ${servers[target].difficulty}`);
+        trace += 5;
+      } else {
+        log("Specify a valid server. Usage: connect server1");
+      }
+      break;
+    case "hack":
+      if(!currentServer) {
+        log("Not connected to a server. Use 'connect [server]'");
+        break;
+      }
+      let s = servers[currentServer];
+      let buff = serverBuffs[currentServer] ? 2.0 : 1.0;
+      if(serverBuffs[currentServer]) {
+        serverBuffs[currentServer]--;
+        if(serverBuffs[currentServer]<=0) delete serverBuffs[currentServer];
+      }
+      let chance = (0.75 + 0.25*software - 0.1*s.difficulty) * buff;
+      if(inventory.includes("zero-day")) {
+        chance = 1.0; // guaranteed success
+        inventory.splice(inventory.indexOf("zero-day"), 1);
+        log("⚡ Used Zero-Day Exploit! Guaranteed success.");
+      }
+      if(chance > Math.random()) {
+        if(s.difficulty >= 3 && Math.random() < 0.5) {
+          startCodeChallenge(); // mini-game
+        } else {
+          let gain = Math.floor(Math.random()*(s.reward[1]-s.reward[0]) + s.reward[0]);
+          money += gain;
+          log(`Hack successful! Gained $${gain}`);
+          if(mission && mission.includes(currentServer)) completeMission();
+        }
+        repHackers += 1; repCorps -= 1;
+      } else {
+        trace += 15;
+        log("Hack failed! Trace increased by 15%");
+        repLaw += 1;
+      }
+      break;
+    case "upgrade":
+      if(target === "software" && money >= 500) {
+        software++;
+        money -= 500;
+        log("Software upgraded to level " + software);
+      } else if(target === "security" && money >= 500) {
+        security += 10;
+        money -= 500;
+        log("Security upgraded! +" + 10 + "%");
+      } else {
+        log("Not enough money or invalid. Use 'upgrade software' or 'upgrade security'");
+      }
+      break;
+    case "status":
+      log(`Money: $${money}, BTC: ${btc}, Software: ${software}, Security: ${security}%, Trace: ${trace}%, Rep(Hackers): ${repHackers}, Rep(Corps): ${repCorps}, Rep(Law): ${repLaw}`);
+      log(`Inventory: ${inventory.length > 0 ? inventory.join(", ") : "Empty"}`);
+      break;
+    case "buy":
+      if(target === "btc" && money >= btcPrice) {
+        money -= btcPrice;
+        btc++;
+        log("Bought 1 BTC for $" + btcPrice);
+      } else if(target === "malware" && money >= 500) {
+        money -= 500;
+        inventory.push("malware");
+        log("🦠 Bought a Malware Kit (+hack power on next attempt).");
+      } else if(target === "vpn" && money >= 300) {
+        money -= 300;
+        inventory.push("vpn");
+        log("🔐 Bought a VPN upgrade (reduces trace gain on next hack).");
+      } else if(target === "ransomware" && money >= 1000) {
+        money -= 1000;
+        inventory.push("ransomware");
+        log("💀 Bought Ransomware (big one-time payout item).");
+      } else if(target === "zero-day" && money >= 1500) {
+        money -= 1500;
+        inventory.push("zero-day");
+        log("⚡ Bought Zero-Day Exploit (+100% hack success, one use).");
+      } else if(target === "rootkit" && money >= 3000) {
+        money -= 3000;
+        inventory.push("rootkit");
+        log("👾 Bought Rootkit (stealthier hacks, -10 trace per use).");
+      } else {
+        log("Not enough money or invalid item.");
+      }
+      break;
+    case "sell":
+      if(target === "btc" && btc > 0) {
+        btc--;
+        money += btcPrice;
+        log("Sold 1 BTC for $" + btcPrice);
+      } else if(target === "data" && inventory.includes("data")) {
+        inventory.splice(inventory.indexOf("data"), 1);
+        money += 1000;
+        log("📂 Sold stolen data for $1000.");
+      } else {
+        log("No such item to sell.");
+      }
+      break;
+    case "use":
+      if(target === "malware" && inventory.includes("malware")) {
+        inventory.splice(inventory.indexOf("malware"), 1);
+        software += 1;
+        log("🦠 Used Malware Kit. Temporary boost: Software +1.");
+      } else if(target === "vpn" && inventory.includes("vpn")) {
+        inventory.splice(inventory.indexOf("vpn"), 1);
+        trace = Math.max(0, trace - 10);
+        log("🔐 VPN activated. Trace reduced by 10%.");
+      } else if(target === "ransomware" && inventory.includes("ransomware")) {
+        inventory.splice(inventory.indexOf("ransomware"), 1);
+        let gain = 5000;
+        money += gain;
+        trace += 25;
+        log("💀 Deployed Ransomware. Gained $" + gain + ", but trace +25%.");
+        repLaw += 5;
+      } else if(target === "rootkit" && inventory.includes("rootkit")) {
+        inventory.splice(inventory.indexOf("rootkit"), 1);
+        trace = Math.max(0, trace - 20);
+        log("👾 Rootkit deployed. Trace reduced by 20%.");
+      } else {
+        log("You don't have that item or it can't be used.");
+      }
+      break;
+    case "mission":
+      if(!mission) startMission();
+      else log("Current Mission: " + mission);
+      break;
+    case "darknet":
+      log("🕶 Darknet Shop: sell data, buy malware kits, vpn upgrades.");
+      log("Commands: buy malware (500$), buy vpn (300$), sell data (1000$).");
+      break;
+    case "blackmarket":
+      log("💀 Black Market: ransomware(1000$), zero-day(1500$), rootkit(3000$).");
+      break;
+    case "evade":
+      if(trace >= 70) {
+        evadeMiniGame();
+      } else {
+        log("Evade not necessary yet. Trace below 70%.");
+      }
+      break;
+    default:
+      log("Unknown command. Type 'help' for commands.");
+  }
 
-    if (player === 'player') {
-      setTimeout(() => aiMove(), 50);
-    }
-  });
+  btcPrice = Math.max(100, btcPrice + Math.floor(Math.random()*200 - 100));
+  randomEvent();
+  updateStats();
 }
 
-  function aiMove() {
-    if (gameOver) return;
-    let bestCol;
-
-    if (mode === 'normal') {
-      let validCols = [];
-      for (let c = 0; c < cols; c++) {
-        if (getAvailableRow(c) !== -1) validCols.push(c);
-      }
-      bestCol = validCols[Math.floor(Math.random() * validCols.length)];
-    } else if (mode === 'hard') {
-      bestCol = minimaxRoot(4);
-    } else if (mode === 'impossible') {
-      bestCol = minimaxRoot(8);
-    }
-
-    makeMove(bestCol, 'ai');
-  }
-
-  function getAvailableRow(col) {
-    for (let r = rows - 1; r >= 0; r--) {
-      if (!gameBoard[r][col]) return r;
-    }
-    return -1;
-  }
-
-  function isBoardFull() {
-    return gameBoard.every(row => row.every(cell => cell));
-  }
-
-  // Evaluation, minimax, check win functions omitted here for brevity...
-  // (Use your existing implementations as you provided)
-
-  // (Paste the checkWinInBoard, checkAnyWin, minimax, minimaxRoot, evaluateBoard, etc.)
-
-  // For brevity, I include your existing code here:
-  // You can replace this comment with your original functions exactly as you provided.
-
-  // I'll copy these functions now to keep it fully functional:
-
-  function evaluateBoard(board = gameBoard) {
-    const AI = 'ai';
-    const PLAYER = 'player';
-
-    function countSequences(player) {
-      let score = 0;
-
-      function checkLine(r, c, dr, dc) {
-        let countPlayer = 0, countEmpty = 0;
-        for (let i = 0; i < 4; i++) {
-          const nr = r + dr * i;
-          const nc = c + dc * i;
-          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return 0;
-          if (board[nr][nc] === player) countPlayer++;
-          else if (board[nr][nc] === null) countEmpty++;
-          else return 0;
-        }
-        if (countPlayer === 4) return 100000;
-        if (countPlayer === 3 && countEmpty === 1) return 1000;
-        if (countPlayer === 2 && countEmpty === 2) return 10;
-        if (countPlayer === 1 && countEmpty === 3) return 1;
-        return 0;
-      }
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          score += checkLine(r, c, 0, 1);
-          score += checkLine(r, c, 1, 0);
-          score += checkLine(r, c, 1, 1);
-          score += checkLine(r, c, 1, -1);
-        }
-      }
-      return score;
-    }
-
-    const aiScore = countSequences(AI);
-    const playerScore = countSequences(PLAYER);
-    return aiScore - playerScore;
-  }
-
-  function minimaxRoot(depth) {
-    let bestScore = -Infinity;
-    let bestCol = null;
-    for (let c = 0; c < cols; c++) {
-      let r = getAvailableRow(c);
-      if (r === -1) continue;
-      gameBoard[r][c] = 'ai';
-      const score = minimax(gameBoard, depth - 1, false, -Infinity, Infinity);
-      gameBoard[r][c] = null;
-      if (score > bestScore) {
-        bestScore = score;
-        bestCol = c;
-      }
-    }
-    return bestCol;
-  }
-
-  function minimax(boardState, depth, isMaximizing, alpha, beta) {
-    if (depth === 0 || isBoardFull() || checkAnyWin(boardState)) {
-      return evaluateBoard(boardState);
-    }
-
-    if (isMaximizing) {
-      let maxEval = -Infinity;
-      for (let c = 0; c < cols; c++) {
-        const r = getAvailableRowInBoard(boardState, c);
-        if (r === -1) continue;
-        boardState[r][c] = 'ai';
-        if (checkWinInBoard(boardState, r, c, 'ai')) {
-          boardState[r][c] = null;
-          return 1000000 + depth * 1000;
-        }
-        const evalScore = minimax(boardState, depth - 1, false, alpha, beta);
-        boardState[r][c] = null;
-        maxEval = Math.max(maxEval, evalScore);
-        alpha = Math.max(alpha, evalScore);
-        if (beta <= alpha) break;
-      }
-      return maxEval;
-    } else {
-      let minEval = Infinity;
-      for (let c = 0; c < cols; c++) {
-        const r = getAvailableRowInBoard(boardState, c);
-        if (r === -1) continue;
-        boardState[r][c] = 'player';
-        if (checkWinInBoard(boardState, r, c, 'player')) {
-          boardState[r][c] = null;
-          return -1000000 - depth * 1000;
-        }
-        const evalScore = minimax(boardState, depth - 1, true, alpha, beta);
-        boardState[r][c] = null;
-        minEval = Math.min(minEval, evalScore);
-        beta = Math.min(beta, evalScore);
-        if (beta <= alpha) break;
-      }
-      return minEval;
-    }
-  }
-
-  function getAvailableRowInBoard(boardState, col) {
-    for (let r = rows - 1; r >= 0; r--) {
-      if (!boardState[r][col]) return r;
-    }
-    return -1;
-  }
-
-  function checkAnyWin(boardState) {
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (boardState[r][c] && checkWinInBoard(boardState, r, c, boardState[r][c])) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  function checkWinInBoard(boardState, row, col, player) {
-    const directions = [
-      [0,1],[1,0],[1,1],[1,-1]
-    ];
-    for (const [dr, dc] of directions) {
-      let count = 1;
-      for (let i = 1; i < 4; i++) {
-        const r = row + dr*i, c = col + dc*i;
-        if (r < 0 || c < 0 || r >= rows || c >= cols || boardState[r][c] !== player) break;
-        count++;
-      }
-      for (let i = 1; i < 4; i++) {
-        const r = row - dr*i, c = col - dc*i;
-        if (r < 0 || c < 0 || r >= rows || c >= cols || boardState[r][c] !== player) break;
-        count++;
-      }
-      if (count >= 4) return true;
-    }
-    return false;
-  }
-
-  function updateCell(row, col, player) {
-    const cell = [...document.querySelectorAll('.cell')].find(c =>
-      parseInt(c.dataset.row) === row && parseInt(c.dataset.col) === col);
-    if (cell) {
-      cell.classList.add(player);
-      cell.style.transform = 'scale(1.2)';
-      setTimeout(() => cell.style.transform = 'scale(1)', 300);
-    }
-  }
-
-  function checkWin(row, col, player) {
-    return checkWinInBoard(gameBoard, row, col, player);
-  }
-
-  function celebrate(winner) {
-    if (winner === 'player') {
-      document.getElementById('winSound').play();
-      showBanner("You Win!", "#0ff");
-    } else {
-      document.getElementById('loseSound').play();
-      showBanner("AI Wins!", "#f00");
-    }
-    launchConfetti();
-    // Keep confetti for 7 seconds
-    setTimeout(clearConfetti, 7000);
-  }
-
-  function showBanner(message, color) {
-    banner.textContent = message;
-    banner.style.color = color;
-    banner.style.display = 'block';
-  }
-
-  function clearBanner() {
-    banner.style.display = 'none';
-  }
-
-  function launchConfetti() {
-    const canvas = document.getElementById('confetti');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const pieces = Array.from({length: 150}, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      radius: Math.random() * 6 + 4,
-      dx: (Math.random() - 0.5) * 4,
-      dy: Math.random() * 4 + 1,
-      color: `hsl(${Math.random() * 360}, 100%, 50%)`
-    }));
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (const p of pieces) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.fill();
-        p.x += p.dx;
-        p.y += p.dy;
-        if (p.y > canvas.height) p.y = 0;
-        if (p.x > canvas.width || p.x < 0) p.dx *= -1;
-      }
-      confettiAnimationId = requestAnimationFrame(draw);
-    }
-    draw();
-  }
-
-    function clearConfetti() {
-    if (confettiAnimationId) {
-      cancelAnimationFrame(confettiAnimationId);
-      confettiAnimationId = null;
-    }
-    const canvas = document.getElementById('confetti');
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
-  board.addEventListener('mousemove', e => {
-  if (gameOver) return;
-  const col = parseInt(e.target.dataset.col);
-  if (isNaN(col)) return;
-
-  // Remove previous hover classes
-  document.querySelectorAll('.cell.hover').forEach(c => c.classList.remove('hover'));
-
-  // Highlight the lowest available cell in that column
-  const row = getAvailableRow(col);
-  if (row !== -1) {
-    const cell = [...document.querySelectorAll('.cell')].find(c =>
-      parseInt(c.dataset.row) === row && parseInt(c.dataset.col) === col);
-    if (cell) cell.classList.add('hover');
+input.addEventListener("keydown", function(e) {
+  if(e.key === "Enter") {
+    executeCommand(input.value);
+    input.value = "";
   }
 });
 
-board.addEventListener('mouseleave', () => {
-  document.querySelectorAll('.cell.hover').forEach(c => c.classList.remove('hover'));
-});
-
-  function resetGame() {
-    gameBoard = Array(rows).fill(null).map(() => Array(cols).fill(null));
-    gameOver = false;
-    clearBanner();
-    clearConfetti();
-    initBoard();
-  }
+log("Welcome, hacker. Type 'help' to see commands.");
+updateStats();
 </script>
 
-</head>
+</body>
 </html>
