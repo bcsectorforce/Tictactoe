@@ -1,383 +1,747 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cyber Ops Simulator 4.0</title>
-<style>
-body {
-  font-family: 'Courier New', monospace;
-  background-color: #000;
-  color: #0f0;
-  margin: 0;
-  padding: 20px;
-}
-#terminal {
-  border: 2px solid #0f0;
-  padding: 10px;
-  height: 500px;
-  overflow-y: auto;
-  background-color: #000;
-}
-input {
-  width: 100%;
-  padding: 10px;
-  background: #000;
-  color: #0f0;
-  border: 2px solid #0f0;
-  font-family: 'Courier New', monospace;
-  font-size: 16px;
-}
-.stats {
-  margin: 10px 0;
-}
-.code-challenge {
-  color: #ff0;
-}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SimStock — Virtual Stock Market Simulator</title>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0f1724; --panel:#0b1220; --muted:#9aa6b2; --accent:#4fd1c5;
+      --card:#0e1722; --glass: rgba(255,255,255,0.03);
+      --success:#16a34a; --danger:#ef4444;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; background:
+      radial-gradient(1200px 600px at 10% 10%, rgba(79,209,197,0.06), transparent 6%),
+      radial-gradient(900px 400px at 90% 90%, rgba(99,102,241,0.03), transparent 6%),
+      linear-gradient(180deg,var(--bg),#071124 80%);
+      color:#e6eef6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      padding:24px;
+    }
+
+    header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px}
+    .brand{display:flex; gap:12px; align-items:center}
+    .logo{
+      width:56px; height:56px; border-radius:12px; display:grid; place-items:center;
+      background:linear-gradient(135deg,var(--accent),#647eff); box-shadow:0 6px 28px rgba(10,12,20,0.6);
+      font-weight:700; color:#03121b;
+    }
+    h1{font-size:18px;margin:0}
+    .sub{color:var(--muted); font-size:13px}
+
+    .top-controls{display:flex; gap:8px; align-items:center}
+    .btn{
+      background:var(--glass); border:1px solid rgba(255,255,255,0.03); color:var(--accent);
+      padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600;
+    }
+    .btn.ghost{background:transparent; color:var(--muted)}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#647eff); color:#041018; border:0}
+
+    .app{
+      display:grid; grid-template-columns:320px 1fr 360px; gap:18px; align-items:start;
+    }
+
+    /* LEFT: watchlist */
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border-radius:12px; padding:14px; border:1px solid rgba(255,255,255,0.03)}
+    .watchlist h3{margin:0 0 8px 0; font-size:13px}
+    .symbol{display:flex; align-items:center; justify-content:space-between; padding:10px; border-radius:8px; margin-bottom:8px; cursor:pointer; transition:all .15s}
+    .symbol:hover{transform:translateY(-3px); background:rgba(255,255,255,0.01)}
+    .symbol .meta{display:flex; gap:8px; align-items:center}
+    .ticker{width:44px; height:44px; border-radius:8px; display:grid; place-items:center; font-weight:700; color:#061018; background:linear-gradient(90deg,#d6fff6, #bfeef0); color:#052023}
+    .price{font-weight:700}
+    .change.positive{color:var(--success)} .change.negative{color:var(--danger)}
+
+    /* center: chart + trade */
+    .center{display:flex; flex-direction:column; gap:12px}
+    .chart-area{height:360px; padding:12px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); border:1px solid rgba(255,255,255,0.03)}
+    .trade-panel{display:flex; gap:12px}
+    .trade-panel > .card{flex:1; padding:12px}
+    .card h4{margin:0 0 8px 0; font-size:13px}
+
+    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    input[type="number"], select, input[type="text"]{
+      width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); background:transparent; color:inherit;
+    }
+    .row{display:flex; gap:8px}
+    .small{width:120px}
+
+    /* RIGHT: portfolio */
+    .portfolio-table{width:100%; border-collapse:collapse; font-size:13px}
+    .portfolio-table th, .portfolio-table td{padding:8px 6px; text-align:left; border-bottom:1px dashed rgba(255,255,255,0.02)}
+    .muted{color:var(--muted); font-size:13px}
+    .history{max-height:280px; overflow:auto; padding-right:6px}
+
+    footer{margin-top:18px; color:var(--muted); font-size:13px}
+
+    /* responsive */
+    @media (max-width:1100px){
+      .app{grid-template-columns: 1fr; padding-bottom:24px}
+      .chart-area{height:300px}
+    }
+
+    /* small helpers */
+    .pill{background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:999px; font-weight:700; font-size:13px}
+    .disclaimer{background:rgba(255,255,255,0.02); padding:8px; border-radius:8px; color:var(--muted); font-size:13px; margin-top:8px}
+    .info-line{display:flex; justify-content:space-between; gap:12px; align-items:center}
+    .tiny{font-size:12px;color:var(--muted)}
+  </style>
 </head>
 <body>
+  <header>
+    <div class="brand">
+      <div class="logo">SS</div>
+      <div>
+        <h1>SimStock • Virtual Market Simulator</h1>
+        <div class="sub">Practice trading, test strategies, learn how markets behave — simulated money only.</div>
+      </div>
+    </div>
 
-<h1>Cyber Ops Simulator 4.0</h1>
+    <div class="top-controls">
+      <div class="pill" id="cash-pill">$0.00</div>
+      <button class="btn" id="deposit-btn">Deposit $</button>
+      <button class="btn ghost" id="add-symbol-btn">Add Symbol</button>
+      <button class="btn" id="reset-btn">Reset</button>
+    </div>
+  </header>
 
-<div class="stats"></div>
+  <main class="app">
+    <!-- LEFT: watchlist -->
+    <aside class="panel watchlist">
+      <h3>Market Watchlist</h3>
+      <div id="symbols-list" aria-live="polite"></div>
 
-<div id="terminal"></div>
-<input type="text" id="commandInput" placeholder="" autofocus />
+      <div class="disclaimer">
+        <strong>Simulator notice:</strong> This app uses virtual cash only. It does not send or accept real money or connect to any exchange. For real investing you must use a regulated brokerage or a custodial account if you're under 18.
+      </div>
+    </aside>
 
-<script>
-let money = 0;
-let btc = 0;
-let btcPrice = 1000;
-let software = 1;
-let security = 50;
-let trace = 0;
-let terminal = document.getElementById('terminal');
-let input = document.getElementById('commandInput');
-let currentServer = null;
-let mission = null;
-let codeChallenge = null;
-let codeTimer = null;
+    <!-- CENTER: chart + trade -->
+    <section class="center">
+      <div class="panel chart-area">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <strong id="current-ticker">---</strong>
+            <div class="tiny" id="company-name">Select or add a symbol to begin</div>
+          </div>
+          <div class="info-line">
+            <div class="tiny">Last: <span id="last-price">—</span></div>
+            <div class="tiny">Open: <span id="open-price">—</span></div>
+            <div class="tiny">Day %: <span id="day-change">—</span></div>
+          </div>
+        </div>
+        <canvas id="priceChart" style="width:100%;height:260px"></canvas>
+      </div>
 
-let repHackers = 0, repCorps = 0, repLaw = 0;
-let inventory = [];
-let serverBuffs = {};
+      <div class="trade-panel">
+        <div class="card panel">
+          <h4>Place Order</h4>
+          <label>Order Type</label>
+          <select id="order-type"><option value="market">Market</option><option value="limit">Limit</option></select>
 
-let servers = {
-  server1: {difficulty: 1, reward: [200, 800]},
-  server2: {difficulty: 2, reward: [500, 2000]},
-  server3: {difficulty: 3, reward: [1000, 5000]},
-  gov: {difficulty: 4, reward: [2000, 7000]},
-  bank: {difficulty: 4, reward: [3000, 9000]},
-  megacorp: {difficulty: 5, reward: [5000, 15000]},
-  military: {difficulty: 6, reward: [10000, 30000]}
-};
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <div style="flex:1">
+              <label>Symbol</label>
+              <select id="trade-symbol"></select>
+            </div>
+            <div style="width:120px">
+              <label>Side</label>
+              <select id="side"><option value="buy">Buy</option><option value="sell">Sell</option></select>
+            </div>
+          </div>
 
-function updateStats() {
-  document.querySelector('.stats').innerHTML = 
-    `Money: $${money} | BTC: ${btc} | BTC Price: $${btcPrice} | Software: ${software} | Security: ${security}% | Trace: ${trace}% | Rep(Hackers): ${repHackers} | Rep(Corps): ${repCorps} | Rep(Law): ${repLaw}`;
-}
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <div style="flex:1">
+              <label>Quantity</label>
+              <input id="qty" type="number" min="1" value="1" />
+            </div>
+            <div style="width:140px">
+              <label>Limit Price</label>
+              <input id="limit-price" type="number" step="0.01" placeholder="(market)" />
+            </div>
+          </div>
 
-function log(text) {
-  terminal.innerHTML += `<p>> ${text}</p>`;
-  terminal.scrollTop = terminal.scrollHeight;
-}
+          <div style="display:flex; gap:8px; margin-top:12px">
+            <button class="btn primary" id="place-order">Place Order</button>
+            <button class="btn ghost" id="clear-orders">Clear Book</button>
+          </div>
 
-function checkCaught() {
-  if(trace >= 100) {
-    log("TRACE LEVEL MAX! You got caught! GAME OVER.");
-    input.disabled = true;
-    return true;
-  }
-  if(repLaw >= 100) {
-    log("🚨 You are now the MOST WANTED hacker in the world! YOU WIN.");
-    input.disabled = true;
-    return true;
-  }
-  return false;
-}
+          <div style="margin-top:12px">
+            <div class="tiny">Order Book (top 5)</div>
+            <div id="orderbook" style="margin-top:6px;font-size:13px"></div>
+          </div>
+        </div>
 
-function randomEvent() {
-  let roll = Math.random();
-  if(roll < 0.05) {
-    let loss = Math.floor(Math.random()*300+100);
-    money = Math.max(0, money - loss);
-    log(`⚠ MALWARE ATTACK! You lost $${loss}`);
-    security -= 5;
-    trace += 10;
-    repLaw += 1;
-  } else if(roll < 0.08) {
-    trace += 15;
-    log("⚠ Police surveillance increased! Trace rising faster.");
-    repLaw -= 2;
-  } else if(roll < 0.10) {
-    btc += 1;
-    log("✅ Anonymous group donated 1 BTC to you.");
-    repHackers += 2;
-  } else if(roll < 0.12) {
-    log("🤫 Insider leaked a backdoor for server3. Success chance doubled for 3 turns.");
-    serverBuffs["server3"] = 3;
-    repCorps -= 3;
-  }
-}
+        <div class="card panel">
+          <h4>Market Controls</h4>
+          <label>Simulation Speed</label>
+          <select id="speed"><option value="1200">Slow</option><option value="600" selected>Normal</option><option value="200">Fast</option></select>
 
-function startMission() {
-  let missions = [
-    "Steal confidential data from server2",
-    "Destroy malware hidden in server3",
-    "Infiltrate corporation database on server1",
-    "Hack government server (gov) for classified files",
-    "Drain funds from international bank server (bank)",
-    "Steal blueprints from MegaCorp",
-    "Infiltrate military server for weapons data"
-  ];
-  mission = missions[Math.floor(Math.random()*missions.length)];
-  log("New Mission: " + mission);
-}
+          <label style="margin-top:8px">Volatility</label>
+          <input id="vol" type="range" min="0" max="5" step="0.25" value="1.2"/>
 
-function completeMission() {
-  if(!mission) return;
-  log("🎯 Mission complete! Rewards granted.");
-  money += 2000;
-  btc += 1;
-  security += 5;
-  repHackers += 3;
-  repCorps -= 3;
-  repLaw += 1;
-  mission = null;
-}
+          <div style="margin-top:12px">
+            <div class="tiny" id="market-clock">Day 1 • Tick: 0</div>
+            <div style="margin-top:8px">
+              <button class="btn" id="toggle-market">Pause</button>
+              <button class="btn ghost" id="step-tick">Step</button>
+            </div>
+          </div>
 
-function startCodeChallenge() {
-  let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  codeChallenge = "";
-  for(let i=0; i<4; i++) codeChallenge += chars[Math.floor(Math.random()*chars.length)];
-  log(`<span class='code-challenge'>Password crack required! Type: ${codeChallenge} within 10 seconds.</span>`);
-  codeTimer = setTimeout(() => {
-    log("❌ Failed to enter code in time! Trace increased.");
-    trace += 20;
-    codeChallenge = null;
-  }, 10000);
-}
+          <div style="margin-top:12px">
+            <div class="tiny">Add example event</div>
+            <input type="text" id="event-text" placeholder="e.g., 'Product recall'"/>
+            <div style="margin-top:8px; display:flex; gap:8px">
+              <input type="number" id="event-impact" placeholder="impact (-3..+3)" step="0.1" value="-1.0" style="width:120px"/>
+              <button class="btn" id="add-event">Add Event</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-function evadeMiniGame() {
-  let seq = Math.random().toString(36).substring(2,6).toUpperCase();
-  log(`<span class='code-challenge'>TRACE ALERT! Type ${seq} within 8 seconds to reroute signal.</span>`);
-  codeChallenge = "EVADE-"+seq;
-  codeTimer = setTimeout(() => {
-    log("❌ Evade failed. Trace continues climbing.");
-    codeChallenge = null;
-  }, 8000);
-}
+    <!-- RIGHT: portfolio -->
+    <aside class="panel">
+      <h3>Portfolio</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px">
+        <div>
+          <div class="tiny">Cash</div>
+          <div id="cash-display" style="font-weight:800">$0.00</div>
+        </div>
+        <div>
+          <div class="tiny">Portfolio Value</div>
+          <div id="total-value" style="font-weight:800">$0.00</div>
+        </div>
+      </div>
 
-function executeCommand(cmd) {
-  if(checkCaught()) return;
+      <table class="portfolio-table" id="portfolio-table">
+        <thead><tr><th>Symbol</th><th>Qty</th><th>Avg Price</th><th>Market</th><th>P/L</th></tr></thead>
+        <tbody id="portfolio-body"></tbody>
+      </table>
 
-  let parts = cmd.trim().split(" ");
-  let action = parts[0].toLowerCase();
-  let target = parts.slice(1).join(" ").toLowerCase();
+      <h4 style="margin-top:12px">Transaction History</h4>
+      <div class="history" id="history"></div>
 
-  // Evade / code mini-game
-  if(codeChallenge) {
-    if(codeChallenge.startsWith("EVADE-")) {
-      let seq = codeChallenge.split("-")[1];
-      if(cmd.trim().toUpperCase() === seq) {
-        clearTimeout(codeTimer);
-        log("✅ Evade successful! Trace reduced by 20%");
-        trace = Math.max(0, trace-20);
+      <div style="margin-top:12px" class="tiny">Settings & Tips</div>
+      <ul class="tiny muted">
+        <li>All data saved locally in your browser (localStorage).</li>
+        <li>Simulation only — no financial risk. For real investing, use a regulated broker.</li>
+        <li>If under 18, consider custodial accounts with a parent/guardian for real investing.</li>
+      </ul>
+    </aside>
+  </main>
+
+  <footer>
+    Built for learning — practice responsibly. Note: This simulator does not represent real trading rules, fees, or latency.
+  </footer>
+
+  <script>
+    /************************************************************************
+     * SimStock — Virtual Stock Market Simulator
+     * - Single-file advanced simulator
+     * - Persistence via localStorage
+     * - Market engine: random-walk + news events + simple limit order matching
+     *
+     * IMPORTANT: Educational simulator ONLY. Does not connect to real exchanges.
+     ************************************************************************/
+
+    // ---------- Utilities ----------
+    const $ = id => document.getElementById(id);
+    const fmt = n => (typeof n==='number' ? n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : n);
+    const nowIso = () => new Date().toISOString();
+
+    // ---------- Persistent state ----------
+    const STORE_KEY = 'simstock_v1';
+    let state = {
+      cash: 10000,   // virtual starting cash (user can deposit)
+      portfolio: {}, // symbol -> {qty, avg}
+      tx: [],        // transaction history
+      symbols: {},   // symbol -> {name, price, open, history[], vol}
+      orders: [],    // limit orders: {id,ts,symbol,side,qty,limit,owner}
+      settings: { speed:600, vol:1.2, running:true, tick:0, day:1 }
+    };
+
+    function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    function load() {
+      const raw = localStorage.getItem(STORE_KEY);
+      if(raw) {
+        try { state = JSON.parse(raw); }
+        catch(e){ console.warn('load failed',e) }
       } else {
-        log("❌ Wrong sequence. Trace penalty.");
-        trace += 10;
+        // seed with example symbols
+        state.symbols = {
+          RSHK: mkSymbol('RadioShack', 12.50, 1.8),
+          TKTL: mkSymbol('TechTurtle', 42.25, 2.4),
+          NEXA: mkSymbol('NexaHealth', 22.10, 1.6),
+          ZYRO: mkSymbol('ZyroSystems', 7.82, 2.8),
+        };
+        save();
       }
-      codeChallenge = null;
-      updateStats();
-      return;
-    } else {
-      if(cmd.trim().toUpperCase() === codeChallenge) {
-        clearTimeout(codeTimer);
-        log("✅ Code cracked successfully! Hack succeeded.");
-        let gain = Math.floor(Math.random()*3000 + 1000);
-        money += gain;
-        log(`You gained $${gain}`);
-      } else {
-        log("❌ Wrong code! Trace increased heavily.");
-        trace += 30;
-      }
-      codeChallenge = null;
-      updateStats();
-      return;
     }
-  }
 
-  switch(action) {
-    case "help":
-      log("Commands: scan, connect [server], hack, upgrade software/security, status, buy [item], sell [item], use [item], mission, darknet, blackmarket, evade, help");
-      break;
-    case "scan":
-      log("Scanning network... Found servers: server1 (easy), server2 (medium), server3 (hard), gov, bank, megacorp, military");
-      trace += 5;
-      break;
-    case "connect":
-      if(target && servers[target]) {
-        currentServer = target;
-        log(`Connected to ${target}. Difficulty: ${servers[target].difficulty}`);
-        trace += 5;
-      } else {
-        log("Specify a valid server. Usage: connect server1");
+    function mkSymbol(name, price, vol=1.5){
+      const hist = [];
+      for(let i=0;i<120;i++){ hist.push({t:Date.now()-((119-i)*60000), p:price*(1 + (Math.random()-0.5)*0.02)}); }
+      return {name, price, open: price, history: hist, vol};
+    }
+
+    // ---------- Init ----------
+    load();
+
+    // DOM references
+    const symbolsList = $('symbols-list');
+    const tradeSymbolSelect = $('trade-symbol');
+    const currentTicker = $('current-ticker');
+    const companyName = $('company-name');
+    const lastPriceEl = $('last-price');
+    const openPriceEl = $('open-price');
+    const dayChangeEl = $('day-change');
+    const cashPill = $('cash-pill');
+    const cashDisplay = $('cash-display');
+    const totalValue = $('total-value');
+    const portfolioBody = $('portfolio-body');
+    const historyDiv = $('history');
+    const orderbookDiv = $('orderbook');
+    const marketClock = $('market-clock');
+    const priceChartCtx = document.getElementById('priceChart').getContext('2d');
+
+    // controls
+    const speedSelect = $('speed');
+    const volRange = $('vol');
+    const toggleMarketBtn = $('toggle-market');
+    const placeOrderBtn = $('place-order');
+    const depositBtn = $('deposit-btn');
+    const resetBtn = $('reset-btn');
+    const addSymbolBtn = $('add-symbol-btn');
+    const addEventBtn = $('add-event');
+    const eventText = $('event-text');
+    const eventImpact = $('event-impact');
+    const stepTick = $('step-tick');
+    const clearOrdersBtn = $('clear-orders');
+
+    // local runtime
+    let selectedSymbol = Object.keys(state.symbols)[0] || null;
+    if(!selectedSymbol) {
+      selectedSymbol = null;
+    }
+    let chart = null;
+
+    // ---------- UI Rendering ----------
+    function renderSymbols(){
+      symbolsList.innerHTML = '';
+      const keys = Object.keys(state.symbols).sort();
+      keys.forEach(sym => {
+        const s = state.symbols[sym];
+        const row = document.createElement('div');
+        row.className = 'symbol';
+        row.onclick = () => selectSymbol(sym);
+        row.innerHTML = `
+          <div class="meta">
+            <div class="ticker">${sym}</div>
+            <div>
+              <div style="font-weight:700">${s.name}</div>
+              <div class="tiny muted">${fmt(s.price)}</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="price">${fmt(s.price)}</div>
+            <div class="change ${getChangeClass(s)}">${percentChange(s)}</div>
+          </div>
+        `;
+        symbolsList.appendChild(row);
+      });
+
+      // populate trade symbol select
+      tradeSymbolSelect.innerHTML = '';
+      keys.forEach(k => {
+        const opt = document.createElement('option'); opt.value = k; opt.textContent = k;
+        tradeSymbolSelect.appendChild(opt);
+      });
+      if(selectedSymbol) tradeSymbolSelect.value = selectedSymbol;
+      updateTopStats();
+    }
+
+    function getChangeClass(s){ const diff = (s.price - s.open); return diff>=0 ? 'positive' : 'negative'; }
+    function percentChange(s){ return ((s.price - s.open)/s.open*100).toFixed(2) + '%'; }
+
+    function updateTopStats(){
+      if(!selectedSymbol){ currentTicker.textContent='---'; companyName.textContent='Select a symbol to view chart'; lastPriceEl.textContent='—'; openPriceEl.textContent='—'; dayChangeEl.textContent='—'; return; }
+      const s = state.symbols[selectedSymbol];
+      currentTicker.textContent = selectedSymbol;
+      companyName.textContent = s.name;
+      lastPriceEl.textContent = '$' + fmt(s.price);
+      openPriceEl.textContent = '$' + fmt(s.open);
+      dayChangeEl.textContent = percentChange(s);
+    }
+
+    function renderPortfolio(){
+      cashPill.textContent = '$' + fmt(state.cash);
+      cashDisplay.textContent = '$' + fmt(state.cash);
+      // compute holdings value
+      let pv = 0;
+      portfolioBody.innerHTML = '';
+      for(const sym in state.portfolio){
+        const pos = state.portfolio[sym];
+        const mkt = state.symbols[sym]?.price ?? pos.avg;
+        const val = mkt * pos.qty;
+        pv += val;
+        const pl = (mkt - pos.avg) * pos.qty;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><strong>${sym}</strong></td>
+                        <td>${pos.qty}</td>
+                        <td>$${fmt(pos.avg)}</td>
+                        <td>$${fmt(mkt)}</td>
+                        <td style="color:${pl>=0? 'var(--success)':'var(--danger)'}">${pl>=0?'+':''}$${fmt(pl)}</td>`;
+        portfolioBody.appendChild(tr);
       }
-      break;
-    case "hack":
-      if(!currentServer) {
-        log("Not connected to a server. Use 'connect [server]'");
-        break;
+      totalValue.textContent = '$' + fmt(pv + state.cash);
+      renderHistory();
+      renderOrderBook();
+    }
+
+    function renderHistory(){
+      historyDiv.innerHTML = '';
+      const rev = state.tx.slice().reverse();
+      rev.forEach(t => {
+        const d = document.createElement('div');
+        d.style.padding='8px';
+        d.style.borderBottom='1px dashed rgba(255,255,255,0.02)';
+        d.innerHTML = `<div style="display:flex;justify-content:space-between">
+                        <div><strong>${t.side.toUpperCase()} ${t.symbol}</strong> ${t.qty} @ $${fmt(t.price)}</div>
+                        <div class="tiny">${(new Date(t.ts)).toLocaleString()}</div>
+                       </div>
+                       <div class="tiny muted">${t.note || ''}</div>`;
+        historyDiv.appendChild(d);
+      });
+    }
+
+    function renderOrderBook(){
+      // show top 5 buys and sells aggregated
+      const book = {buys: {}, sells: {}};
+      state.orders.forEach(o => {
+        if(o.side === 'buy') book.buys[o.limit] = (book.buys[o.limit] || 0) + o.qty;
+        else book.sells[o.limit] = (book.sells[o.limit] || 0) + o.qty;
+      });
+      // helper to sort keys desc/asc
+      const buys = Object.keys(book.buys).map(Number).sort((a,b)=>b-a).slice(0,5);
+      const sells = Object.keys(book.sells).map(Number).sort((a,b)=>a-b).slice(0,5);
+      let html = '<div style="display:flex;justify-content:space-between"><div><strong>Bids</strong></div><div><strong>Asks</strong></div></div>';
+      const rows = Math.max(buys.length, sells.length);
+      for(let i=0;i<rows;i++){
+        const b = buys[i], s = sells[i];
+        html += `<div style="display:flex;justify-content:space-between;padding:4px 0">
+                  <div style="width:48%">${b? ('$'+fmt(b)) : '&nbsp;'}</div>
+                  <div style="width:48%; text-align:right">${s? ('$'+fmt(s)) : '&nbsp;'}</div>
+                 </div>`;
       }
-      let s = servers[currentServer];
-      let buff = serverBuffs[currentServer] ? 2.0 : 1.0;
-      if(serverBuffs[currentServer]) {
-        serverBuffs[currentServer]--;
-        if(serverBuffs[currentServer]<=0) delete serverBuffs[currentServer];
-      }
-      let chance = (0.75 + 0.25*software - 0.1*s.difficulty) * buff;
-      if(inventory.includes("zero-day")) {
-        chance = 1.0; // guaranteed success
-        inventory.splice(inventory.indexOf("zero-day"), 1);
-        log("⚡ Used Zero-Day Exploit! Guaranteed success.");
-      }
-      if(chance > Math.random()) {
-        if(s.difficulty >= 3 && Math.random() < 0.5) {
-          startCodeChallenge(); // mini-game
-        } else {
-          let gain = Math.floor(Math.random()*(s.reward[1]-s.reward[0]) + s.reward[0]);
-          money += gain;
-          log(`Hack successful! Gained $${gain}`);
-          if(mission && mission.includes(currentServer)) completeMission();
+      orderbookDiv.innerHTML = html;
+    }
+
+    // ---------- Chart ----------
+    function initChart(){
+      if(chart) chart.destroy();
+      const labels = state.symbols[selectedSymbol]?.history.map(h => new Date(h.t).toLocaleTimeString()) || [];
+      const data = state.symbols[selectedSymbol]?.history.map(h => Number(h.p.toFixed(2))) || [];
+      chart = new Chart(priceChartCtx, {
+        type: 'line',
+        data: {
+          labels, datasets: [{
+            label: selectedSymbol || '—',
+            data,
+            borderColor: 'rgba(79,209,197,0.95)',
+            backgroundColor: 'rgba(79,209,197,0.06)',
+            tension: 0.20,
+            pointRadius: 0,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          animation: false,
+          plugins: {legend:{display:false}},
+          scales: {
+            x: { display:false },
+            y: { grid: { color:'rgba(255,255,255,0.03)' }, ticks:{color:'rgba(255,255,255,0.6)'} }
+          }
         }
-        repHackers += 1; repCorps -= 1;
-      } else {
-        trace += 15;
-        log("Hack failed! Trace increased by 15%");
-        repLaw += 1;
-      }
-      break;
-    case "upgrade":
-      if(target === "software" && money >= 500) {
-        software++;
-        money -= 500;
-        log("Software upgraded to level " + software);
-      } else if(target === "security" && money >= 500) {
-        security += 10;
-        money -= 500;
-        log("Security upgraded! +" + 10 + "%");
-      } else {
-        log("Not enough money or invalid. Use 'upgrade software' or 'upgrade security'");
-      }
-      break;
-    case "status":
-      log(`Money: $${money}, BTC: ${btc}, Software: ${software}, Security: ${security}%, Trace: ${trace}%, Rep(Hackers): ${repHackers}, Rep(Corps): ${repCorps}, Rep(Law): ${repLaw}`);
-      log(`Inventory: ${inventory.length > 0 ? inventory.join(", ") : "Empty"}`);
-      break;
-    case "buy":
-      if(target === "btc" && money >= btcPrice) {
-        money -= btcPrice;
-        btc++;
-        log("Bought 1 BTC for $" + btcPrice);
-      } else if(target === "malware" && money >= 500) {
-        money -= 500;
-        inventory.push("malware");
-        log("🦠 Bought a Malware Kit (+hack power on next attempt).");
-      } else if(target === "vpn" && money >= 300) {
-        money -= 300;
-        inventory.push("vpn");
-        log("🔐 Bought a VPN upgrade (reduces trace gain on next hack).");
-      } else if(target === "ransomware" && money >= 1000) {
-        money -= 1000;
-        inventory.push("ransomware");
-        log("💀 Bought Ransomware (big one-time payout item).");
-      } else if(target === "zero-day" && money >= 1500) {
-        money -= 1500;
-        inventory.push("zero-day");
-        log("⚡ Bought Zero-Day Exploit (+100% hack success, one use).");
-      } else if(target === "rootkit" && money >= 3000) {
-        money -= 3000;
-        inventory.push("rootkit");
-        log("👾 Bought Rootkit (stealthier hacks, -10 trace per use).");
-      } else {
-        log("Not enough money or invalid item.");
-      }
-      break;
-    case "sell":
-      if(target === "btc" && btc > 0) {
-        btc--;
-        money += btcPrice;
-        log("Sold 1 BTC for $" + btcPrice);
-      } else if(target === "data" && inventory.includes("data")) {
-        inventory.splice(inventory.indexOf("data"), 1);
-        money += 1000;
-        log("📂 Sold stolen data for $1000.");
-      } else {
-        log("No such item to sell.");
-      }
-      break;
-    case "use":
-      if(target === "malware" && inventory.includes("malware")) {
-        inventory.splice(inventory.indexOf("malware"), 1);
-        software += 1;
-        log("🦠 Used Malware Kit. Temporary boost: Software +1.");
-      } else if(target === "vpn" && inventory.includes("vpn")) {
-        inventory.splice(inventory.indexOf("vpn"), 1);
-        trace = Math.max(0, trace - 10);
-        log("🔐 VPN activated. Trace reduced by 10%.");
-      } else if(target === "ransomware" && inventory.includes("ransomware")) {
-        inventory.splice(inventory.indexOf("ransomware"), 1);
-        let gain = 5000;
-        money += gain;
-        trace += 25;
-        log("💀 Deployed Ransomware. Gained $" + gain + ", but trace +25%.");
-        repLaw += 5;
-      } else if(target === "rootkit" && inventory.includes("rootkit")) {
-        inventory.splice(inventory.indexOf("rootkit"), 1);
-        trace = Math.max(0, trace - 20);
-        log("👾 Rootkit deployed. Trace reduced by 20%.");
-      } else {
-        log("You don't have that item or it can't be used.");
-      }
-      break;
-    case "mission":
-      if(!mission) startMission();
-      else log("Current Mission: " + mission);
-      break;
-    case "darknet":
-      log("🕶 Darknet Shop: sell data, buy malware kits, vpn upgrades.");
-      log("Commands: buy malware (500$), buy vpn (300$), sell data (1000$).");
-      break;
-    case "blackmarket":
-      log("💀 Black Market: ransomware(1000$), zero-day(1500$), rootkit(3000$).");
-      break;
-    case "evade":
-      if(trace >= 70) {
-        evadeMiniGame();
-      } else {
-        log("Evade not necessary yet. Trace below 70%.");
-      }
-      break;
-    default:
-      log("Unknown command. Type 'help' for commands.");
-  }
+      });
+    }
 
-  btcPrice = Math.max(100, btcPrice + Math.floor(Math.random()*200 - 100));
-  randomEvent();
-  updateStats();
-}
+    function updateChart(){
+      if(!chart || !selectedSymbol) return;
+      const hist = state.symbols[selectedSymbol].history.slice(-120);
+      chart.data.labels = hist.map(h => new Date(h.t).toLocaleTimeString());
+      chart.data.datasets[0].data = hist.map(h => Number(h.p.toFixed(2)));
+      chart.update('none');
+    }
 
-input.addEventListener("keydown", function(e) {
-  if(e.key === "Enter") {
-    executeCommand(input.value);
-    input.value = "";
-  }
-});
+    // ---------- Market Engine ----------
+    let tickTimer = null;
+    function startMarket(){
+      clearInterval(tickTimer);
+      tickTimer = setInterval(() => tick(), state.settings.speed);
+      toggleMarketBtn.textContent = 'Pause';
+      state.settings.running = true;
+    }
+    function stopMarket(){
+      clearInterval(tickTimer);
+      toggleMarketBtn.textContent = 'Resume';
+      state.settings.running = false;
+    }
 
-log("Welcome, hacker. Type 'help' to see commands.");
-updateStats();
-</script>
+    function tick(manual=false){
+      // single step of market: update tick count, move prices, match orders
+      state.settings.tick++;
+      marketClock.textContent = `Day ${state.settings.day} • Tick: ${state.settings.tick}`;
+      // move each symbol using random walk + volatility + events
+      for(const sym in state.symbols){
+        const s = state.symbols[sym];
+        const baseVol = (Number(volRange.value) || s.vol) * 0.001; // small fractional moves per tick
+        // gaussian-ish delta
+        const rnd = (gaussRandom()*baseVol);
+        let delta = s.price * rnd;
+        // global drift slightly up
+        delta += s.price * 0.00005;
+        // apply
+        s.price = Math.max(0.01, s.price + delta);
+        // push to history
+        s.history.push({t: Date.now(), p: s.price});
+        if(s.history.length>480) s.history.shift();
+        // execute manager: check orders that match this symbol
+        matchOrders(sym);
+      }
 
+      // occasionally increment day
+      if(state.settings.tick % 480 === 0) {
+        state.settings.day++;
+        // set open to current price for each symbol
+        for(const sym in state.symbols){ state.symbols[sym].open = state.symbols[sym].price; }
+      }
+
+      // update UI
+      renderSymbols();
+      updateTopStats();
+      updateChart();
+      renderPortfolio();
+      save();
+    }
+
+    // Gaussian random (Box-Muller)
+    function gaussRandom(){
+      let u=0,v=0;
+      while(u===0) u=Math.random();
+      while(v===0) v=Math.random();
+      return Math.sqrt(-2.0*Math.log(u))*Math.cos(2*Math.PI*v);
+    }
+
+    // ---------- Orders ----------
+    function placeOrder({symbol, side, qty, type, limit}) {
+      qty = Math.floor(qty);
+      if(qty <= 0) { alert('Quantity must be >= 1'); return; }
+      symbol = symbol.toUpperCase();
+      if(!state.symbols[symbol]) { alert('Unknown symbol'); return; }
+      const s = state.symbols[symbol];
+
+      if(type === 'market') {
+        // execute immediately at current price (simulate slippage small)
+        const price = s.price * (1 + (side==='buy' ? 0.0005 : -0.0005) * (Math.random()-0.5));
+        executeFill({symbol, side, qty, price, note:'market'});
+      } else {
+        // limit order: if price crosses existing market, execute immediately else add to book
+        limit = Number(limit);
+        if(!limit || limit <= 0) { alert('Limit price required for limit orders'); return; }
+        // For buy: if limit >= current best ask (simply current price), execute
+        if((side==='buy' && limit >= s.price) || (side==='sell' && limit <= s.price)) {
+          // immediate fill at limit price
+          executeFill({symbol, side, qty, price: limit, note:'limit-immediate'});
+        } else {
+          // place in order book
+          const order = {id: 'o'+Date.now()+Math.floor(Math.random()*9999), ts:Date.now(), symbol, side, qty, limit};
+          state.orders.push(order);
+          save();
+          renderOrderBook();
+          renderHistory();
+        }
+      }
+    }
+
+    function matchOrders(symbol){
+      // naive matching: if market price crosses limit, execute orders that satisfy
+      const s = state.symbols[symbol];
+      // iterate copy since we may remove
+      const orders = state.orders.filter(o => o.symbol === symbol);
+      for(const o of orders){
+        if(o.side === 'buy' && o.limit >= s.price) {
+          // execute at min(limit, current price)
+          const price = Math.min(o.limit, s.price);
+          executeFill({symbol, side:'buy', qty:o.qty, price, note:'limit-fill'});
+          // remove matching order
+          state.orders = state.orders.filter(x => x.id !== o.id);
+        } else if(o.side === 'sell' && o.limit <= s.price) {
+          const price = Math.max(o.limit, s.price);
+          executeFill({symbol, side:'sell', qty:o.qty, price, note:'limit-fill'});
+          state.orders = state.orders.filter(x => x.id !== o.id);
+        }
+      }
+    }
+
+    function executeFill({symbol, side, qty, price, note}) {
+      price = Number(price);
+      const cost = price * qty;
+      if(side === 'buy') {
+        if(cost > state.cash + 0.0001) { // not enough cash
+          // reject fill, remove any limit order that caused it
+          state.tx.push({ts:Date.now(), symbol, side, qty, price, note:'rejected:insufficient cash'});
+          save(); renderHistory();
+          return;
+        }
+        // update portfolio: average price calculation
+        const pos = state.portfolio[symbol] || {qty:0, avg:0};
+        const newQty = pos.qty + qty;
+        const newAvg = (pos.avg * pos.qty + price * qty) / newQty;
+        state.portfolio[symbol] = {qty: newQty, avg: newAvg};
+        state.cash -= cost;
+      } else {
+        // sell: check holdings
+        const pos = state.portfolio[symbol] || {qty:0, avg:0};
+        if(qty > pos.qty + 0.0001) {
+          state.tx.push({ts:Date.now(), symbol, side, qty, price, note:'rejected:insufficient shares'});
+          save(); renderHistory();
+          return;
+        }
+        pos.qty -= qty;
+        state.cash += cost;
+        if(pos.qty === 0) delete state.portfolio[symbol];
+        else state.portfolio[symbol] = pos;
+      }
+      state.tx.push({ts:Date.now(), symbol, side, qty, price, note:note || ''});
+      save(); renderPortfolio(); renderSymbols(); updateChart();
+    }
+
+    // ---------- Events (news) ----------
+    function addEvent(text, impact){
+      // Simple: select random symbol and apply impact multiplier to price instantly
+      const keys = Object.keys(state.symbols);
+      if(keys.length===0) return;
+      const sym = keys[Math.floor(Math.random()*keys.length)];
+      const s = state.symbols[sym];
+      const changeFactor = 1 + (impact * 0.01); // impact percent
+      s.price = Math.max(0.01, s.price * changeFactor);
+      s.history.push({t:Date.now(), p: s.price});
+      state.tx.push({ts:Date.now(), symbol:sym, side:'event', qty:0, price:s.price, note: `Event: ${text} (${impact})`});
+      save();
+      renderSymbols(); updateChart(); renderPortfolio();
+    }
+
+    // ---------- UI Handlers ----------
+    function selectSymbol(sym){
+      selectedSymbol = sym;
+      tradeSymbolSelect.value = sym;
+      initChart();
+      updateChart();
+      renderOrderBook();
+      updateTopStats();
+    }
+
+    // events
+    placeOrderBtn.onclick = () => {
+      const type = $('order-type').value;
+      const symbol = $('trade-symbol').value;
+      const side = $('side').value;
+      const qty = Number($('qty').value);
+      const limit = Number($('limit-price').value);
+      placeOrder({symbol, side, qty, type, limit});
+    };
+
+    $('order-type').onchange = e => {
+      const v = e.target.value;
+      $('limit-price').disabled = (v === 'market');
+    };
+
+    toggleMarketBtn.onclick = () => {
+      if(state.settings.running) stopMarket();
+      else startMarket();
+    };
+
+    speedSelect.onchange = e => {
+      state.settings.speed = Number(e.target.value);
+      save();
+      if(state.settings.running) startMarket();
+    };
+    volRange.oninput = e => { state.settings.vol = Number(e.target.value); save(); };
+
+    depositBtn.onclick = () => {
+      const amt = prompt('Deposit virtual USD amount (e.g., 5000). This is virtual cash only:');
+      const n = Number(amt);
+      if(!isNaN(n) && n>0){ state.cash += n; save(); renderPortfolio(); renderSymbols(); }
+    };
+
+    resetBtn.onclick = () => {
+      if(!confirm('Reset simulator to default state? This will clear portfolio and history.')) return;
+      localStorage.removeItem(STORE_KEY);
+      load();
+      selectedSymbol = Object.keys(state.symbols)[0];
+      renderAll();
+    };
+
+    addSymbolBtn.onclick = () => {
+      const sym = prompt('New symbol ticker (3-5 chars):').toUpperCase();
+      if(!sym || sym.length<1) return;
+      const name = prompt('Company name:') || sym + ' Corp';
+      const price = Number(prompt('Starting price (e.g., 12.50):', '10'));
+      if(isNaN(price) || price <= 0){ alert('Invalid price'); return; }
+      state.symbols[sym] = mkSymbol(name, Number(price), 1.8);
+      save();
+      renderAll();
+      selectSymbol(sym);
+    };
+
+    addEventBtn.onclick = () => {
+      const txt = eventText.value.trim() || 'News';
+      const imp = Number(eventImpact.value) || 0;
+      addEvent(txt, imp);
+      eventText.value=''; eventImpact.value='-1.0';
+    };
+
+    stepTick.onclick = () => { tick(true); };
+
+    clearOrdersBtn.onclick = () => {
+      if(confirm('Clear all limit orders?')) { state.orders = []; save(); renderOrderBook(); }
+    };
+
+    // allow selecting symbol via select
+    tradeSymbolSelect.onchange = (e) => { selectSymbol(e.target.value); };
+
+    // ---------- Render all ----------
+    function renderAll(){
+      renderSymbols();
+      renderPortfolio();
+      initChart();
+      updateChart();
+    }
+
+    // ---------- Startup ----------
+    selectedSymbol = selectedSymbol || Object.keys(state.symbols)[0];
+    renderAll();
+    if(state.settings.running) startMarket();
+
+    // ---------- Optional: place a small demo trade for first-time users ----------
+    if(state.tx.length === 0 && Object.keys(state.portfolio).length === 0) {
+      // comment these lines out if you don't want a demo trade
+      // placeOrder({symbol: Object.keys(state.symbols)[0], side:'buy', qty: 2, type:'market'});
+      save();
+    }
+
+    // expose for debugging (developer console)
+    window.SimStock = {state, placeOrder, addEvent, mkSymbol};
+
+    // Save periodically to avoid data loss
+    setInterval(save, 5000);
+  </script>
 </body>
 </html>
